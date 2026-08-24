@@ -1,0 +1,444 @@
+================================================================================
+           DAILY INSPIRATION - COMPLETE BACKEND & SYSTEM ARCHITECTURE
+================================================================================
+
+TABLE OF CONTENTS:
+--------------------------------------------------------------------------------
+1. High-Level Overview & Core Philosophy
+2. Complete System Architecture & Tech Stack
+3. Database Architecture & Collections (MongoDB Atlas)
+4. User Subscription & Security Lifecycle (OTP Engine)
+5. User Preferences & Category Customization
+6. Ready-Made Quote Dataset Engine (data/quotes.json)
+7. The 365-Day Non-Repeating Uniqueness Algorithm
+8. Visual Storytelling & Image Ingestion (Pexels Engine)
+9. Daily Email Dispatch Engine & Feedback System
+10. Stateless Cloud Dispatch Model (Render + GitHub Actions)
+11. Authentication & Security Layer (CRON_SECRET)
+12. Comprehensive API Endpoints Reference
+13. Local Setup, Testing (31 Pytest Suite), & Production Deployment
+--------------------------------------------------------------------------------
+
+
+================================================================================
+1. HIGH-LEVEL OVERVIEW & CORE PHILOSOPHY
+================================================================================
+Daily Inspiration is an automated, production-ready Python web application that
+delivers personalized daily inspirational emails to verified subscribers.
+
+Key Design Goals:
+- 100% Zero External API Dependency at Runtime: No third-party quote APIs that
+  can fail, hit rate limits, or show bot checkpoints.
+- 365-Day Rolling Uniqueness: A subscriber will NEVER receive the same quote
+  twice within a 365-day period.
+- Stateless Cloud Execution: Fully compatible with modern cloud hosting
+  (Render free tier / serverless) by using GitHub Actions as an external daily
+  trigger rather than unreliable in-memory background threads.
+- Comprehensive Security: SHA-256 cryptographic hashing for OTP tokens,
+  constant-time HMAC verification, rate limiting, and header-based CRON authentication.
+
+
+================================================================================
+2. COMPLETE SYSTEM ARCHITECTURE & TECH STACK
+================================================================================
+
++------------------------------------------------------------------------------+
+|                                TECH STACK                                    |
++------------------------------------------------------------------------------+
+| Backend Framework    : FastAPI (Python 3.11 / ASGI)                          |
+| Database             : MongoDB Atlas (via Async Motor Driver)                |
+| Email Transport      : SMTP (Gmail App Password / SendGrid / Amazon SES)     |
+| Image Provider       : Pexels REST API (with internal caching & fallback)    |
+| Frontend Engine      : Vanilla HTML5, CSS3 Glassmorphism, Vanilla JavaScript |
+| Templating           : Jinja2                                                |
+| Test Framework       : Pytest + Pytest-Asyncio + HTTPX AsyncClient           |
+| Automation Trigger   : GitHub Actions (Daily Cron + Manual Workflow Dispatch)|
++------------------------------------------------------------------------------+
+
+SYSTEM FLOW DIAGRAM:
+--------------------
+[User on Browser]
+       │ (1. Enter email)
+       ▼
+[FastAPI: POST /api/subscription/request-otp] ──> [Generate 6-digit OTP] 
+       │                                          [Store SHA-256 hash in MongoDB]
+       │                                          [Send OTP via SMTP]
+       ▼
+[User receives OTP email] ──> (2. Enter 6-digit code)
+       │
+       ▼
+[FastAPI: POST /api/subscription/verify-otp] ──> [Verify hash via HMAC]
+       │                                         [Update user status to "verified"]
+       ▼
+[User picks categories] ──> [FastAPI: PUT /api/preferences] ──> [Save to MongoDB]
+       │
+       ▼
+[Redirect to Home Page with Toast Alert: "Preferences Saved!"]
+
+DAILY AUTOMATED TRIGGER FLOW:
+-----------------------------
+[GitHub Actions (08:00 UTC)]
+       │
+       │ (HTTP POST with Header: "X-Cron-Secret: <CRON_SECRET>")
+       ▼
+[Render FastAPI Server: POST /api/jobs/send-daily-inspiration]
+       │
+       ├─► [Verify X-Cron-Secret Header] -> (401 if invalid / missing)
+       │
+       ├─► [Fetch all Active Verified Users from MongoDB]
+       │
+       ├─► [For Each User]:
+       │      ├─► 1. Query "delivery_history" for quotes sent to User in last 365 days
+       │      ├─► 2. Exclude those quote IDs: {"_id": {"$nin": [sent_ids]}}
+       │      ├─► 3. Match user's preferred categories (e.g. Success, Discipline)
+       │      ├─► 4. Select random eligible Quote
+       │      ├─► 5. Check if quote has cached image (if not, query Pexels & cache)
+       │      ├─► 6. Render personalized HTML template (Quote, Story, Challenge, Feedback)
+       │      ├─► 7. Send Email via SMTP
+       │      └─► 8. ONLY ON SUCCESS -> Insert record into "delivery_history"
+       │             ON FAILURE   -> Log error into "email_logs" (Quote is NOT locked)
+       │
+       └─► Return JSON Summary: {success: true, total: 5, sent: 5, failed: 0}
+
+
+================================================================================
+3. DATABASE ARCHITECTURE & COLLECTIONS (MONGODB ATLAS)
+================================================================================
+All database access is 100% non-blocking and asynchronous using the `motor`
+async driver for MongoDB.
+
+1. "users" Collection:
+   - _id             : ObjectId (Primary Key)
+   - email           : String (Indexed, Unique, Lowercase)
+   - status          : String ("pending" | "verified" | "unsubscribed")
+   - interests       : Array of Strings (e.g. ["success", "discipline", "study"])
+   - created_at      : DateTime (UTC)
+   - updated_at      : DateTime (UTC)
+   - unsubscribed_at : DateTime (UTC, Optional)
+
+2. "quotes" Collection:
+   - _id                : ObjectId (Primary Key)
+   - quote              : String (The inspirational text)
+   - author             : String (Author name)
+   - category           : String (One of the 9 supported categories)
+   - tags               : Array of Strings (e.g. ["discipline", "focus", "habit"])
+   - quote_hash         : String (SHA-256 of normalized "quote-author", Unique Index)
+   - image_url          : String (Cached High-Res image URL)
+   - image_source       : String ("Pexels" | "Curated Local")
+   - image_photographer : String (Attribution)
+   - person_story       : String (Historical/biographical story of the author)
+   - daily_action       : String (Concrete daily micro-action challenge)
+   - created_at         : DateTime (UTC)
+   - updated_at         : DateTime (UTC)
+
+3. "delivery_history" Collection (Enforces 365-Day Uniqueness):
+   - _id           : ObjectId (Primary Key)
+   - user_id       : String / ObjectId (ID of recipient user)
+   - quote_id      : String / ObjectId (ID of quote delivered)
+   - sent_at       : DateTime (UTC, timestamp of delivery)
+   - status        : String ("sent")
+   * Compound Index: ("user_id", "sent_at") for lightning-fast 365-day lookups.
+
+4. "email_logs" Collection (Audit & Error Tracking):
+   - _id           : ObjectId (Primary Key)
+   - user_id       : String (Recipient user ID)
+   - email         : String (Recipient email address)
+   - subject       : String (Email subject line)
+   - status        : String ("sent" | "failed")
+   - error_message : String (Detailed SMTP/Transport error message if failed)
+   - sent_at       : DateTime (UTC)
+
+5. "otp_records" Collection (Transient Verification Tokens):
+   - _id           : ObjectId (Primary Key)
+   - email         : String (Indexed, Lowercase)
+   - otp_hash      : String (SHA-256 hash of "OTP:SECRET_KEY")
+   - attempts      : Integer (Tracks failed verification attempts, max 3)
+   - created_at    : DateTime (UTC, dynamic timestamp for rate limiting)
+   - expires_at    : DateTime (UTC, created_at + 5 minutes)
+   - is_used       : Boolean (True once successfully redeemed)
+
+6. "feedback" Collection (User Interaction & Ratings):
+   - _id           : ObjectId (Primary Key)
+   - user_id       : String (User ID)
+   - quote_id      : String (Quote ID)
+   - feedback_type : String ("loved" | "useful" | "not_for_me")
+   - created_at    : DateTime (UTC)
+
+
+================================================================================
+4. USER SUBSCRIPTION & SECURITY LIFECYCLE (OTP ENGINE)
+================================================================================
+The OTP subsystem is designed following OWASP security recommendations:
+
+Phase 1: Request OTP (`POST /api/subscription/request-otp`)
+1. Email Normalization: Strips whitespace and forces lowercase.
+2. Email Validation: Validates email RFC 5322 format using Pydantic `EmailStr`.
+3. Duplicate Subscription Prevention: Checks if user already exists in `users` with
+   `status == "verified"`. If verified, returns `HTTP 400 Bad Request` with:
+   "This email is already subscribed to Daily Inspiration. You are already receiving daily emails!"
+4. Rate Limiting: Checks the most recent OTP in `otp_records` for that email.
+   If `now - created_at < 60 seconds`, returns `HTTP 429 Too Many Requests`.
+5. Cryptographic Generation: Generates a cryptographically random 6-digit string
+   using Python's `secrets.randbelow(900000) + 100000`.
+6. Secure Hashing: Never stores plain OTPs. Computes:
+   `hash = SHA256(f"{otp}:{SECRET_KEY}")`.
+7. Storage: Saves `{email, otp_hash, created_at: now, expires_at: now + 5min}`.
+8. Dispatch: Sends responsive HTML email containing the 6-digit code.
+
+Phase 2: Verify OTP (`POST /api/subscription/verify-otp`)
+1. User submits email and 6-digit string.
+2. MongoDB queries the latest active unused record for that email.
+3. Checks expiration: If `now > expires_at`, returns `400 Bad Request: OTP Expired`.
+4. Checks attempts: If `attempts >= 3`, locks record to prevent brute-force attacks.
+5. HMAC Constant-Time Compare: Verifies hash using `hmac.compare_digest` to prevent
+   timing attacks.
+6. User Activation: Upserts the user record in `users` collection, sets
+   `status = "verified"`, and marks the OTP record as `is_used = True`.
+7. Success Redirect: Frontend smoothly routes user to onboarding preferences.
+
+
+================================================================================
+5. USER PREFERENCES & CATEGORY CUSTOMIZATION
+================================================================================
+Subscribers can personalize the topics they receive daily.
+
+Supported Categories (9 Core Pillars):
+1. `success`            - Success, Goal Achievement & Excellence
+2. `career`             - Work Ethic, Professional Mastery & Craftsmanship
+3. `study`              - Continuous Learning, Reading & Wisdom
+4. `personal_growth`    - Mindset, Habits, Self-Overcoming & Potential
+5. `leadership`         - Vision, Empowerment, Integrity & Service
+6. `discipline`         - Consistency, Willpower & Focus
+7. `entrepreneurship`   - Innovation, Calculated Risk & Execution
+8. `failure_resilience` - Overcoming Adversity, Grit & Courage
+9. `happiness`          - Mindfulness, Inner Peace & Gratitude
+
+How Preference Matching Works:
+- If a user selects `["discipline", "leadership"]`, the quote selector filters
+  eligible quotes where `category IN ["discipline", "leadership"]`.
+- If a user has not selected any preferences or if all preference quotes have
+  been received within 365 days, the engine smoothly falls back to any eligible
+  quote from the entire library.
+
+
+================================================================================
+6. READY-MADE QUOTE DATASET ENGINE (`data/quotes.json`)
+================================================================================
+To eliminate downtime and flakiness from external APIs, the application uses
+a built-in dataset stored in `data/quotes.json`.
+
+Dataset Specifications:
+- Total Quotes: **405 Quotes** (45 unique quotes in each of the 9 categories).
+- High Performance Import: `QuoteService.import_quotes_from_dataset()` prepares
+  hashes in-memory and executes a single batch `$in` lookup against MongoDB,
+  inserting new records in ~100ms.
+- Deduplication: Computes `SHA256(f"{quote.lower().strip()}-{author.lower().strip()}")`.
+  Duplicate inserts are completely ignored.
+- Standalone CLI Utility: Administrators can seed or update quotes anytime:
+  `python scripts/import_quotes.py`
+
+
+================================================================================
+7. THE 365-DAY NON-REPEATING UNIQUENESS ALGORITHM
+================================================================================
+How does the backend guarantee a user will never receive the same quote twice
+in 365 days?
+
+The Selection Step Algorithm (`QuoteService.get_eligible_quote_for_user`):
+1. **Cutoff Timestamp**: `cutoff_date = NOW() - timedelta(days=365)`.
+2. **Delivery Aggregation**:
+   MongoDB aggregates all quotes sent to this user:
+   ```json
+   db.delivery_history.aggregate([
+     {"$match": {"user_id": user_id, "sent_at": {"$gte": cutoff_date}, "status": "sent"}},
+     {"$group": {"_id": None, "quote_ids": {"$addToSet": "$quote_id"}}}
+   ])
+   ```
+3. **ObjectId Normalization**: Converts all string IDs to BSON ObjectIds.
+4. **Exclusion Query**:
+   `base_query = {"_id": {"$nin": obj_excluded}}`
+5. **Preference Filter**:
+   If user selected preferences:
+   `query = {"_id": {"$nin": obj_excluded}, "category": {"$in": user_interests}}`
+6. **Selection**: Randomly samples one quote from the matching set.
+
+Mathematical Proof of Uniqueness:
+- Total Quotes in Database = 405.
+- Required unique days = 365.
+- Since 405 > 365:
+  - On Day 1: 405 quotes are eligible.
+  - On Day 100: 305 quotes are eligible.
+  - On Day 365: 41 quotes are eligible.
+  - On Day 366: Day 1's quote is now older than 365 days and re-enters eligibility.
+- Result: The user experiences an infinite, non-repeating cycle!
+
+Safe Delivery History Logging:
+- `delivery_history` is written **ONLY AFTER** the SMTP server returns success.
+- If SMTP fails (network drop, mail server issue), the failure is recorded in
+  `email_logs`, and `delivery_history` is **NOT** updated. This guarantees that
+  an undelivered quote is not locked out for 365 days.
+
+
+================================================================================
+8. VISUAL STORYTELLING & IMAGE INGESTION (PEXELS ENGINE)
+================================================================================
+1. Every quote is paired with a beautiful, high-resolution contextual photo.
+2. `ImageService` queries the Pexels REST API using category-tailored keywords
+   (e.g., `discipline` -> "deep work focus", `study` -> "library reading desk").
+3. **Database Caching**: Once an image is fetched for a quote, `image_url` is
+   saved directly onto the quote document in MongoDB. Subsequent dispatches of
+   that quote use the cached image, requiring ZERO API calls.
+4. **Offline Fallback**: If Pexels API key is missing or offline, the service
+   falls back to high-quality curated Unsplash CDN URLs so emails are never broken.
+
+
+================================================================================
+9. DAILY EMAIL DISPATCH ENGINE & FEEDBACK SYSTEM
+================================================================================
+Emails are rendered using Jinja2 HTML templates designed for 100% mobile and
+desktop email client compatibility (Gmail, Apple Mail, Outlook).
+
+Email Content Structure:
+1. **Header Banner**: "Your Daily Spark of Inspiration".
+2. **Hero Image**: Crisp visual matching the quote theme.
+3. **The Quote & Author**: Prominently formatted in elegant typography.
+4. **Person of the Day Story**: Biographical summary of the author's journey.
+5. **Today's Action Challenge**: Practical micro-step the reader can do today.
+6. **Interactive Feedback Buttons**:
+   - `[ ❤️ Loved it ]`  -> Calls `/api/feedback?feedback_type=loved`
+   - `[ 💡 Helpful ]`   -> Calls `/api/feedback?feedback_type=useful`
+   - `[ ⏭️ Not for me ]` -> Calls `/api/feedback?feedback_type=not_for_me`
+7. **Footer**: One-click unsubscribe and preference management links.
+
+
+================================================================================
+10. STATELESS CLOUD DISPATCH MODEL (RENDER + GITHUB ACTIONS)
+================================================================================
+
+Why APScheduler was removed:
+- Cloud platforms like Render (free tier) put web processes to sleep after
+  15 minutes of inactivity.
+- In-memory schedulers (APScheduler) freeze when the server sleeps, causing
+  scheduled daily emails to be missed.
+
+The Modern Stateless Solution:
+- FastAPI exposes a protected endpoint:
+  `POST /api/jobs/send-daily-inspiration`
+- GitHub Actions runs an automated workflow daily via Cron (`0 8 * * *`).
+- GitHub Actions sends an HTTP POST request to your Render server.
+- If Render is asleep, the incoming HTTP request automatically wakes it up,
+  FastAPI executes the daily job across all subscribers, and responds with 200 OK.
+
+
+================================================================================
+11. AUTHENTICATION & SECURITY LAYER (CRON_SECRET)
+================================================================================
+To prevent unauthorized users or web crawlers from triggering mass emails,
+all job endpoints require header-based authentication:
+
+Request Header:
+`X-Cron-Secret: <YOUR_CRON_SECRET>`
+
+Verification Process (`routers/jobs.py`):
+```python
+def verify_cron_secret(x_cron_secret: str = Header(None, alias="X-Cron-Secret")):
+    if not x_cron_secret or x_cron_secret.strip() != settings.cron_secret.strip():
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid or missing X-Cron-Secret"
+        )
+    return True
+```
+- If the header is missing: Returns `HTTP 401 Unauthorized`.
+- If the secret does not match: Returns `HTTP 401 Unauthorized`.
+- If the secret matches: FastAPI executes the job and returns execution statistics.
+
+
+================================================================================
+12. COMPREHENSIVE API ENDPOINTS REFERENCE
+================================================================================
+
+Subscription:
+-------------
+- `POST /api/subscription/request-otp` : Request 6-digit verification code.
+- `POST /api/subscription/verify-otp`  : Verify OTP and activate subscription.
+- `GET  /api/subscription/status`      : Check subscription status by email.
+- `POST /api/subscription/unsubscribe` : Unsubscribe email from daily dispatches.
+- `POST /api/subscription/resubscribe` : Reactivate an unsubscribed account.
+
+Preferences:
+------------
+- `GET  /api/preferences`              : Retrieve user's selected categories.
+- `PUT  /api/preferences`              : Update selected categories.
+- `POST /api/preferences/add`          : Add a single category.
+- `POST /api/preferences/remove`       : Remove a single category.
+
+Jobs & Automation (Protected with X-Cron-Secret):
+-------------------------------------------------
+- `POST /api/jobs/send-daily-inspiration` : Dispatches daily inspiration emails.
+- `POST /api/jobs/import-quotes`          : Imports/syncs quotes from dataset.
+
+Feedback & System:
+------------------
+- `POST /api/feedback`                 : Submit feedback rating for a quote.
+- `GET  /api/feedback/email`           : Submit feedback directly via email link.
+- `GET  /health`                       : Service health check status.
+
+
+================================================================================
+13. LOCAL SETUP, TESTING, & PRODUCTION DEPLOYMENT
+================================================================================
+
+Local Setup:
+------------
+1. Clone repo & navigate into folder:
+   `cd Fast_pro`
+2. Create & activate virtual environment:
+   `python -m venv venv`
+   `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Mac/Linux)
+3. Install dependencies:
+   `pip install -r requirements.txt`
+4. Configure `.env`:
+   - `MONGODB_URL=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority`
+   - `SMTP_USER=your-email@gmail.com`
+   - `SMTP_PASSWORD=your-app-password`
+   - `CRON_SECRET=your-secure-secret-here`
+5. Seed Quote Dataset (405 quotes):
+   `python scripts/import_quotes.py`
+6. Start Server:
+   `python run.py` (Runs on http://localhost:8000)
+
+Running Automated Tests:
+------------------------
+The project includes a comprehensive suite of 31 unit tests covering:
+- Dataset import & SHA-256 duplicate rejection
+- 9-category rule and keyword categorization
+- 365-day quote exclusion per user
+- Safe delivery history logging (success vs failure)
+- OTP security and rate limiting
+- CRON_SECRET 401 unauthorized protection
+- GitHub Actions workflow syntax validation
+
+Execute test suite:
+`pytest -v` (All 31 tests will pass).
+
+GitHub Actions & Render Deployment:
+-----------------------------------
+1. Deploy code to Render as a Web Service.
+2. In Render Dashboard -> Environment Variables, add:
+   `MONGODB_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+   `EMAIL_FROM`, `EMAIL_FROM_NAME`, `PEXELS_API_KEY`, `SECRET_KEY`, `CRON_SECRET`.
+3. In GitHub Repository -> Settings -> Secrets and variables -> Actions, add:
+   - `APP_URL`     : Your Render app URL (e.g. `https://daily-inspiration-app.onrender.com`)
+   - `CRON_SECRET` : The exact secret configured on Render.
+4. Test manual trigger from GitHub Actions -> "Daily Inspiration Dispatch" -> "Run workflow".
+5. Test via curl:
+   ```bash
+   curl -X POST "https://your-app.onrender.com/api/jobs/send-daily-inspiration" \
+     -H "Content-Type: application/json" \
+     -H "X-Cron-Secret: your-cron-secret"
+   ```
+
+================================================================================
+                            END OF ARCHITECTURE GUIDE
+================================================================================

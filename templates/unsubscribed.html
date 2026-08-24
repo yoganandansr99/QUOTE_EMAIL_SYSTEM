@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}Unsubscribed — Daily Inspiration{% endblock %}
+
+{% block content %}
+<!-- Confetti Physics Canvas -->
+<canvas id="confetti-canvas"></canvas>
+
+<div class="auth-page-container">
+    <div class="auth-card reveal-up">
+        <div class="auth-icon-wrap">
+            <span class="auth-emoji">👋</span>
+        </div>
+
+        <div class="step-indicator-pill">Subscription Cancelled</div>
+        <h1 class="auth-title">You've Been Unsubscribed</h1>
+        <p class="auth-subtitle">We're sorry to see you leave our morning community.</p>
+
+        <div class="unsub-notice-box">
+            <p>The email <strong id="current-unsub-email-display">{{ email if email else 'associated with your account' }}</strong> has been safely removed from our daily queue.</p>
+            <p class="notice-sub">You will not receive any more daily emails unless you choose to resubscribe.</p>
+        </div>
+
+        <!-- Feedback Form -->
+        <div class="feedback-card" id="feedback-container">
+            <h3>Help Us Improve (Optional)</h3>
+            <p>Could you let us know what made you decide to unsubscribe?</p>
+
+            <form id="feedback-form" class="feedback-option-form">
+                <div class="feedback-choices">
+                    <label class="feedback-radio-item">
+                        <input type="radio" name="reason" value="too_frequent" checked>
+                        <span>Emails arrived too frequently</span>
+                    </label>
+                    <label class="feedback-radio-item">
+                        <input type="radio" name="reason" value="not_relevant">
+                        <span>Content wasn't relevant to my goals</span>
+                    </label>
+                    <label class="feedback-radio-item">
+                        <input type="radio" name="reason" value="prefer_other">
+                        <span>I prefer other sources of motivation</span>
+                    </label>
+                    <label class="feedback-radio-item">
+                        <input type="radio" name="reason" value="no_longer_interested">
+                        <span>No longer need morning inspiration</span>
+                    </label>
+                    <label class="feedback-radio-item">
+                        <input type="radio" name="reason" value="other">
+                        <span>Other reason</span>
+                    </label>
+                </div>
+
+                <textarea name="comment" id="feedback-comment" placeholder="Any additional thoughts or suggestions? (Optional)"></textarea>
+
+                <button type="submit" class="btn-secondary btn-full-width" id="feedback-submit-btn">
+                    <span>Submit Feedback</span>
+                </button>
+            </form>
+
+            <div id="feedback-message" class="message success" style="display: none;"></div>
+        </div>
+
+        <!-- Resubscribe Card -->
+        <div class="reactivate-box" style="position: relative; overflow: hidden; border: 2px solid rgba(99, 102, 241, 0.25);">
+            <h4>Changed Your Mind?</h4>
+            <p>Accidentally clicked or want to restart your inspiring morning routine?</p>
+
+            {% if not email %}
+            <div style="margin-bottom: 15px;">
+                <input type="email" id="resubscribe-email-input" placeholder="Enter your email to reactivate..." class="custom-email-input" style="width:100%; padding:12px 14px; margin-bottom:10px;">
+            </div>
+            {% endif %}
+
+            <button id="resubscribe-btn" class="btn-primary btn-full-width" type="button" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);">
+                <span class="btn-text">⚡ Reactivate Subscription</span>
+                <span class="btn-loader" style="display: none;">
+                    <span class="spinner"></span>
+                </span>
+            </button>
+        </div>
+
+        <div class="return-home-row">
+            <a href="/" class="btn-text-link">← Return to Homepage</a>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- CRAZY CELEBRATION & INTERACTIVE RESUBSCRIBE MODAL POPUP           -->
+<!-- ================================================================= -->
+<div id="resubscribe-celebration-modal" class="resub-modal-backdrop" style="display: none;">
+    <div class="resub-modal-card">
+        <button type="button" class="resub-close-btn" id="modal-close-x-btn" title="Close">✕</button>
+
+        <!-- Pulsing Hero Icon Portal -->
+        <div class="resub-icon-portal">
+            <div class="resub-pulse-ring"></div>
+            <div class="resub-pulse-ring"></div>
+            <div class="resub-icon-circle">
+                <span>🚀</span>
+            </div>
+        </div>
+
+        <div class="resub-pill-tag">
+            <span>✨ Subscription Restored ✨</span>
+        </div>
+
+        <h2 class="resub-title">Welcome Back, Champion!</h2>
+        <p class="resub-subtitle">
+            You're officially reconnected! Daily Inspiration morning emails will resume for <span id="modal-email-target" class="resub-highlight-email">your email</span>.
+        </p>
+
+        <!-- Dynamic Live Checklist -->
+        <div class="resub-checklist">
+            <div class="resub-check-item">
+                <span class="resub-check-icon">✓</span>
+                <span>Daily 8:00 AM Delivery Resumed</span>
+            </div>
+            <div class="resub-check-item">
+                <span class="resub-check-icon">✓</span>
+                <span>365-Day Non-Repeating Quote Engine Active</span>
+            </div>
+            <div class="resub-check-item">
+                <span class="resub-check-icon">✓</span>
+                <span>Person of the Day & Action Challenges Enabled</span>
+            </div>
+        </div>
+
+        <!-- Interactive Quick Focus Picker -->
+        <div class="resub-focus-section">
+            <span class="resub-focus-title">🎯 Pick your focus for tomorrow morning:</span>
+            <div class="resub-chips-grid">
+                <button type="button" class="resub-chip-btn selected" data-topic="success">🏆 Success & Ambition</button>
+                <button type="button" class="resub-chip-btn" data-topic="discipline">⚡ Discipline</button>
+                <button type="button" class="resub-chip-btn" data-topic="study">📚 Deep Focus</button>
+                <button type="button" class="resub-chip-btn" data-topic="happiness">😊 Joy & Peace</button>
+                <button type="button" class="resub-chip-btn" data-topic="personal_growth">🌱 Growth</button>
+            </div>
+        </div>
+
+        <!-- Action CTAs -->
+        <div class="resub-actions-row">
+            <a href="/preferences" id="modal-goto-preferences-btn" class="btn-resub-glow">
+                <span>🚀 Open My Control Panel & Preferences →</span>
+            </a>
+            <button type="button" id="modal-done-btn" class="btn-resub-secondary">
+                Continue to Homepage
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Confetti Physics Engine
+class ConfettiCannon {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.particles = [];
+        this.animationId = null;
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    fire() {
+        const colors = ['#6366f1', '#a855f7', '#ec4899', '#f59e0b', '#10b981', '#38bdf8', '#fbbf24'];
+        const count = 160;
+
+        for (let i = 0; i < count; i++) {
+            this.particles.push({
+                x: this.canvas.width / 2 + (Math.random() - 0.5) * 80,
+                y: this.canvas.height / 2 + (Math.random() - 0.5) * 80,
+                vx: (Math.random() - 0.5) * 22,
+                vy: (Math.random() - 0.8) * 24 - 4,
+                size: Math.random() * 9 + 5,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                rotation: Math.random() * 360,
+                rotationSpeed: (Math.random() - 0.5) * 12,
+                gravity: 0.42,
+                drag: 0.98,
+                opacity: 1,
+                shape: Math.random() > 0.3 ? 'rect' : 'circle'
+            });
+        }
+
+        if (!this.animationId) {
+            this.loop();
+        }
+    }
+
+    loop() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            p.vx *= p.drag;
+            p.rotation += p.rotationSpeed;
+            p.opacity -= 0.007;
+
+            if (p.opacity <= 0 || p.y > this.canvas.height) {
+                this.particles.splice(i, 1);
+                continue;
+            }
+
+            this.ctx.save();
+            this.ctx.globalAlpha = Math.max(0, p.opacity);
+            this.ctx.translate(p.x, p.y);
+            this.ctx.rotate((p.rotation * Math.PI) / 180);
+            this.ctx.fillStyle = p.color;
+
+            if (p.shape === 'rect') {
+                this.ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            } else {
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            this.ctx.restore();
+        }
+
+        if (this.particles.length > 0) {
+            this.animationId = requestAnimationFrame(() => this.loop());
+        } else {
+            this.animationId = null;
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+}
+
+const confetti = new ConfettiCannon('confetti-canvas');
+
+// Modal Elements
+const celebrationModal = document.getElementById('resubscribe-celebration-modal');
+const modalEmailTarget = document.getElementById('modal-email-target');
+const modalGotoPrefBtn = document.getElementById('modal-goto-preferences-btn');
+const modalCloseXBtn = document.getElementById('modal-close-x-btn');
+const modalDoneBtn = document.getElementById('modal-done-btn');
+
+function openCelebrationModal(email) {
+    if (modalEmailTarget) modalEmailTarget.textContent = email;
+    if (modalGotoPrefBtn) modalGotoPrefBtn.href = `/preferences?email=${encodeURIComponent(email)}`;
+    celebrationModal.style.display = 'flex';
+    celebrationModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    confetti.fire();
+
+    // Trigger second wave of confetti for extra celebration
+    setTimeout(() => {
+        confetti.fire();
+    }, 450);
+}
+
+function closeCelebrationModal() {
+    celebrationModal.classList.remove('active');
+    celebrationModal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeCelebrationModal);
+if (modalDoneBtn) modalDoneBtn.addEventListener('click', () => {
+    closeCelebrationModal();
+    window.location.href = '/';
+});
+
+celebrationModal.addEventListener('click', (e) => {
+    if (e.target === celebrationModal) closeCelebrationModal();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const unsubEmail = ('{{ email }}' || '').trim().toLowerCase();
+    if (unsubEmail && window.AccountManager) {
+        AccountManager.removeAccount(unsubEmail, true);
+    }
+});
+
+// Interactive Topic Focus Picker inside Modal
+document.querySelectorAll('.resub-chip-btn').forEach(chip => {
+    chip.addEventListener('click', async function() {
+        this.classList.toggle('selected');
+        const selectedTopics = Array.from(document.querySelectorAll('.resub-chip-btn.selected')).map(c => c.dataset.topic);
+        const email = modalEmailTarget ? modalEmailTarget.textContent.trim() : '';
+
+        if (email && selectedTopics.length > 0) {
+            try {
+                await fetch(`/api/preferences?email=${encodeURIComponent(email)}&interests=${encodeURIComponent(selectedTopics.join(','))}`, {
+                    method: 'PUT'
+                });
+                showToast(`✓ Set your morning focus to: ${this.textContent.trim()} ✨`);
+            } catch (err) {
+                console.log('Preference auto-sync:', err);
+            }
+        }
+    });
+});
+
+// Feedback Form Handling
+document.getElementById('feedback-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('feedback-submit-btn');
+    const msg = document.getElementById('feedback-message');
+
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Sending...';
+
+    setTimeout(() => {
+        btn.style.display = 'none';
+        document.querySelector('.feedback-choices').style.display = 'none';
+        document.getElementById('feedback-comment').style.display = 'none';
+        msg.textContent = '✓ Thank you! Your feedback has been recorded.';
+        msg.style.display = 'block';
+    }, 400);
+});
+
+// Resubscribe Button Click Flow
+document.getElementById('resubscribe-btn').addEventListener('click', async function() {
+    let email = '{{ email }}'.trim();
+    if (!email) {
+        const inputEl = document.getElementById('resubscribe-email-input');
+        if (inputEl && inputEl.value.trim()) {
+            email = inputEl.value.trim().toLowerCase();
+        } else if (window.AccountManager) {
+            email = AccountManager.getActiveAccount() || '';
+        }
+    }
+
+    if (!email) {
+        const manualEmail = prompt('Please enter your email address to reactivate your subscription:');
+        if (manualEmail && manualEmail.includes('@')) {
+            email = manualEmail.trim().toLowerCase();
+        } else {
+            window.location.href = '/#subscribe-form';
+            return;
+        }
+    }
+
+    const btn = this;
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+
+    btn.disabled = true;
+    btnText.textContent = 'Reactivating in seconds...';
+    if (btnLoader) btnLoader.style.display = 'inline-block';
+
+    try {
+        const response = await fetch(`/api/subscription/resubscribe?email=${encodeURIComponent(email)}`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Register with Account Manager
+            if (window.AccountManager) {
+                AccountManager.addAccount(email);
+            } else {
+                localStorage.setItem('daily_inspiration_user_email', email);
+            }
+
+            // Trigger Crazy Celebration Modal Popup & Particle Confetti Blast
+            openCelebrationModal(email);
+            showToast('🎉 Welcome back! Subscription successfully reactivated.');
+
+            btnText.textContent = '✓ Subscription Reactivated!';
+        } else {
+            showToast(data.detail || 'Could not reactivate. Redirecting to subscribe form...');
+            setTimeout(() => {
+                window.location.href = `/?email=${encodeURIComponent(email)}#subscribe-form`;
+            }, 1200);
+        }
+    } catch (error) {
+        showToast('Network issue. Please try again.');
+    } finally {
+        btn.disabled = false;
+        if (btnLoader) btnLoader.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

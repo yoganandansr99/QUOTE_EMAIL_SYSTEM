@@ -1,0 +1,640 @@
+{% extends "base.html" %}
+
+{% block title %}My Account & Preferences — Daily Inspiration{% endblock %}
+
+{% block content %}
+<div class="preferences-page-wrapper">
+    <div class="preferences-main-container reveal-up">
+        <div class="page-header-center">
+            <div class="pill-badge">
+                <span class="sparkle-icon">⚙️</span>
+                <span>My Account & Control Panel</span>
+            </div>
+            <h1 class="page-title">Subscriber Dashboard</h1>
+            <p class="page-subtitle">Manage your morning inspiration topics, share your feedback, or adjust your subscription.</p>
+        </div>
+
+        <!-- Multi-Account Quick Switcher Bar -->
+        <div id="quick-account-switcher-placeholder"></div>
+
+        {% if not email %}
+        <!-- Email Lookup Card -->
+        <div class="account-lookup-box">
+            <div class="lookup-icon-circle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </div>
+            <h3>Access Your Account</h3>
+            <p>Enter the email address you subscribed with to manage your preferences, submit feedback, or modify your subscription.</p>
+
+            <form id="lookup-form" class="lookup-input-form">
+                <div class="input-action-group">
+                    <input type="email" id="lookup-email" placeholder="Enter your email address..." required autocomplete="email" class="custom-email-input">
+                    <button type="submit" class="btn-primary">
+                        <span>Access My Account →</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% else %}
+        <!-- Account Status Header -->
+        <div class="account-status-bar">
+            <div class="status-col">
+                <span class="status-label">Active Account:</span>
+                <strong class="status-val">{{ email }}</strong>
+            </div>
+            <div class="status-col" style="display:flex; align-items:center; gap:10px;">
+                <span class="status-pill status-{{ 'active' if is_verified else 'inactive' }}">
+                    <span class="status-dot"></span>
+                    <span>{{ 'Verified Subscriber' if is_verified else 'Pending Verification' }}</span>
+                </span>
+                <button type="button" onclick="AccountManager.openModal()" class="btn-manage-all-accounts" style="background:#ffffff; border:1px solid var(--border-subtle); padding:6px 12px; font-size:12px;">
+                    🔄 Switch Account
+                </button>
+            </div>
+        </div>
+
+        {% if is_verified %}
+        <!-- ========================================== -->
+        <!-- SECTION 1: TOPIC / THEME PREFERENCES       -->
+        <!-- ========================================== -->
+        <div class="preferences-card-box" id="topics-section">
+            <div class="pref-card-header">
+                <div>
+                    <h2>Active Inspiration Topics</h2>
+                    <p>Customize which topics you want in your morning emails. Select all or pick your favorites.</p>
+                </div>
+                <div class="active-topics-counter" id="active-topics-count">Active: <span>0</span>/9</div>
+            </div>
+
+            <form id="preferences-form" class="preferences-form-grid">
+                <div class="interests-grid-two-col">
+                    <label class="interest-select-card {% if 'success' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="success" {% if 'success' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">🏆</span>
+                            <div>
+                                <strong>Success</strong>
+                                <span class="topic-subtext">Achievement & mindset</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'career' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="career" {% if 'career' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">💼</span>
+                            <div>
+                                <strong>Career</strong>
+                                <span class="topic-subtext">Professional growth</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'study' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="study" {% if 'study' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">📚</span>
+                            <div>
+                                <strong>Study</strong>
+                                <span class="topic-subtext">Deep focus & learning</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'personal_growth' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="personal_growth" {% if 'personal_growth' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">🌱</span>
+                            <div>
+                                <strong>Personal Growth</strong>
+                                <span class="topic-subtext">Self-mastery & habits</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'leadership' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="leadership" {% if 'leadership' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">👑</span>
+                            <div>
+                                <strong>Leadership</strong>
+                                <span class="topic-subtext">Vision & ethics</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'discipline' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="discipline" {% if 'discipline' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">⚡</span>
+                            <div>
+                                <strong>Discipline</strong>
+                                <span class="topic-subtext">Overcoming friction</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'entrepreneurship' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="entrepreneurship" {% if 'entrepreneurship' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">🚀</span>
+                            <div>
+                                <strong>Entrepreneurship</strong>
+                                <span class="topic-subtext">Execution & innovation</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'failure_resilience' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="failure_resilience" {% if 'failure_resilience' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">💪</span>
+                            <div>
+                                <strong>Resilience</strong>
+                                <span class="topic-subtext">Overcoming setbacks</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card {% if 'happiness' in interests %}checked{% endif %}">
+                        <input type="checkbox" name="interest" value="happiness" {% if 'happiness' in interests %}checked{% endif %}>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">😊</span>
+                            <div>
+                                <strong>Happiness</strong>
+                                <span class="topic-subtext">Peace & gratitude</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <input type="hidden" id="email" value="{{ email }}">
+
+                <div class="pref-actions-bar">
+                    <div id="pref-message" class="message" style="display: none; margin: 0; flex: 1;"></div>
+                    <button type="submit" class="btn-primary" id="save-pref-btn">
+                        <span class="btn-text">Save Preferences ✨</span>
+                        <span class="btn-loader" style="display: none;">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SECTION 2: USER FEEDBACK & SUGGESTIONS     -->
+        <!-- ========================================== -->
+        <div class="preferences-card-box" id="feedback-section" style="margin-top: 28px;">
+            <div class="pref-card-header">
+                <div>
+                    <h2>Send Feedback to Our Team</h2>
+                    <p>Share ideas, suggest favorite quotes, report issues, or tell us how your mornings are going.</p>
+                </div>
+                <div style="background:#e0e7ff; color:#4338ca; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:20px; display:flex; align-items:center; gap:5px;">
+                    <span>✉️ Direct to promotionp270@gmail.com</span>
+                </div>
+            </div>
+
+            <form id="feedback-submit-form" style="display: flex; flex-direction: column; gap: 20px;">
+                <input type="hidden" id="user-email-feedback" value="{{ email }}">
+
+                <!-- Feedback Category Type Selection -->
+                <div>
+                    <label style="display:block; font-size:13.5px; font-weight:700; color:var(--text-heading); margin-bottom:10px;">
+                        What type of feedback are you sharing?
+                    </label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                        <label class="feedback-type-pill active">
+                            <input type="radio" name="feedback_type" value="general" checked style="display:none;">
+                            <span>💬 General Feedback</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="loved" style="display:none;">
+                            <span>❤️ Loving the Quotes</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="suggestion" style="display:none;">
+                            <span>💡 Feature Idea</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="quote_request" style="display:none;">
+                            <span>📖 Quote Suggestion</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="issue" style="display:none;">
+                            <span>⚠️ Report Issue</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Star Rating -->
+                <div>
+                    <label style="display:block; font-size:13.5px; font-weight:700; color:var(--text-heading); margin-bottom:8px;">
+                        Rate your Daily Inspiration experience:
+                    </label>
+                    <div class="star-rating-row" id="star-rating-container">
+                        <span class="star-btn active" data-rating="1">★</span>
+                        <span class="star-btn active" data-rating="2">★</span>
+                        <span class="star-btn active" data-rating="3">★</span>
+                        <span class="star-btn active" data-rating="4">★</span>
+                        <span class="star-btn active" data-rating="5">★</span>
+                        <span id="star-rating-label" style="font-size:13.5px; font-weight:600; color:var(--text-secondary); margin-left:10px;">5 / 5 Stars</span>
+                    </div>
+                    <input type="hidden" id="feedback-rating-val" value="5">
+                </div>
+
+                <!-- Detailed Comment Textarea -->
+                <div>
+                    <label for="feedback-comment-text" style="display:block; font-size:13.5px; font-weight:700; color:var(--text-heading); margin-bottom:8px;">
+                        Your Message / Suggestions:
+                    </label>
+                    <textarea id="feedback-comment-text" rows="4" placeholder="Tell us what you like, quote recommendations, or what we can do to make your mornings brighter..." required style="width: 100%; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; font-family: inherit; font-size: 14.5px; line-height: 1.6; outline: none; transition: var(--transition); resize: vertical;"></textarea>
+                </div>
+
+                <!-- Action Button & Status Alert -->
+                <div class="pref-actions-bar" style="margin-top: 5px;">
+                    <div id="feedback-status-message" class="message" style="display: none; margin: 0; flex: 1;"></div>
+                    <button type="submit" class="btn-primary" id="btn-submit-feedback">
+                        <span class="btn-text">📨 Send Feedback Directly</span>
+                        <span class="btn-loader" style="display: none;">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if feedback_history and feedback_history|length > 0 %}
+        <!-- Previous Feedback History -->
+        <div class="preferences-card-box" style="margin-top: 28px;">
+            <div class="pref-card-header">
+                <div>
+                    <h3>Your Previous Feedback</h3>
+                    <p>History of feedback and reactions submitted from this account.</p>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                {% for item in feedback_history %}
+                <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px 18px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="background: #e0e7ff; color: #4338ca; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+                            {{ item.feedback_type|upper }}
+                        </span>
+                        <span style="font-size: 12px; color: var(--text-muted);">
+                            {{ item.created_at.strftime('%b %d, %Y') if item.created_at else '' }}
+                        </span>
+                    </div>
+                    {% if item.rating %}
+                    <div style="color: #f59e0b; font-size: 13px; margin-bottom: 4px;">
+                        {% for i in range(item.rating) %}★{% endfor %}
+                    </div>
+                    {% endif %}
+                    <p style="margin: 0; font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">
+                        {{ item.comment or 'Recorded reaction to daily email quote.' }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ========================================== -->
+        <!-- SECTION 3: PAUSE OR UNSUBSCRIBE            -->
+        <!-- ========================================== -->
+        <div class="danger-zone-card" style="margin-top: 28px;">
+            <div class="danger-flex">
+                <div>
+                    <h3>Pause or Cancel Subscription</h3>
+                    <p>You can unsubscribe from all daily emails at any time with one click.</p>
+                </div>
+                <button id="unsubscribe-btn" class="btn-danger" type="button">Unsubscribe</button>
+            </div>
+        </div>
+
+        {% elif is_unsubscribed %}
+        <!-- Inactive / Unsubscribed Status Card -->
+        <div class="not-verified-box" style="border: 2px solid rgba(239, 68, 68, 0.25); background: #fff5f5;">
+            <div class="not-verified-icon" style="background: #fee2e2; color: #dc2626;">⏸️</div>
+            <h3 style="color: #991b1b;">Subscription Inactive (Unsubscribed)</h3>
+            <p style="color: #7f1d1d; margin-bottom: 20px;">The email <strong>{{ email }}</strong> has been unsubscribed from Daily Inspiration emails.</p>
+            <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                <button type="button" id="pref-reactivate-btn" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+                    <span>⚡ Reactivate Subscription Now</span>
+                </button>
+                <a href="/" class="btn-secondary">Return to Homepage</a>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="not-verified-box">
+            <div class="not-verified-icon">⚠️</div>
+            <h3>Email Verification Required</h3>
+            <p>Your subscription for <strong>{{ email }}</strong> is pending. Please complete your email verification to unlock personalized settings and feedback.</p>
+            <a href="/verify?email={{ email }}" class="btn-primary">Verify Email Now</a>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Dialog for Unsubscribe Confirmation -->
+<div id="unsubscribe-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-icon">👋</div>
+        <h3>Unsubscribe from Daily Inspiration?</h3>
+        <p>Are you sure you want to stop receiving your daily morning quotes, photography, stories, and challenges?</p>
+        <div class="modal-buttons">
+            <button id="cancel-unsubscribe" class="btn-secondary" type="button">Keep Subscription</button>
+            <button id="confirm-unsubscribe" class="btn-danger" type="button">Yes, Unsubscribe</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    {% if email %}
+    if (window.AccountManager) {
+        {% if is_verified %}
+        AccountManager.addAccount('{{ email }}');
+        {% elif is_unsubscribed %}
+        AccountManager.removeAccount('{{ email }}', true);
+        {% endif %}
+        AccountManager.renderPreferencesSwitcher();
+    }
+    {% endif %}
+
+    const lookupInput = document.getElementById('lookup-email');
+    if (lookupInput && window.AccountManager) {
+        const active = AccountManager.getActiveAccount();
+        if (active) lookupInput.value = active;
+    }
+    updateTopicCount();
+
+    // Feedback Type Radio Pills
+    document.querySelectorAll('.feedback-type-pill').forEach(pill => {
+        pill.addEventListener('click', function() {
+            document.querySelectorAll('.feedback-type-pill').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            const radio = this.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+
+    // Star Rating Interaction
+    const starBtns = document.querySelectorAll('.star-btn');
+    const ratingInput = document.getElementById('feedback-rating-val');
+    const ratingLabel = document.getElementById('star-rating-label');
+
+    starBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            if (ratingInput) ratingInput.value = rating;
+            if (ratingLabel) ratingLabel.textContent = `${rating} / 5 Stars`;
+
+            starBtns.forEach(b => {
+                const bRating = parseInt(b.dataset.rating);
+                if (bRating <= rating) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+        });
+    });
+
+    // Reactivate button for unsubscribed account
+    const reactivateBtn = document.getElementById('pref-reactivate-btn');
+    if (reactivateBtn) {
+        reactivateBtn.addEventListener('click', async function() {
+            const email = '{{ email }}'.trim();
+            if (!email) return;
+
+            this.disabled = true;
+            this.querySelector('span').textContent = 'Reactivating subscription...';
+
+            try {
+                const response = await fetch(`/api/subscription/resubscribe?email=${encodeURIComponent(email)}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    if (window.AccountManager) {
+                        AccountManager.addAccount(email);
+                    }
+                    showToast('🎉 Welcome back! Subscription successfully reactivated.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    showToast('Could not reactivate. Please try again.');
+                    this.disabled = false;
+                    this.querySelector('span').textContent = '⚡ Reactivate Subscription Now';
+                }
+            } catch (err) {
+                showToast('Network error. Please try again.');
+                this.disabled = false;
+                this.querySelector('span').textContent = '⚡ Reactivate Subscription Now';
+            }
+        });
+    }
+});
+
+function updateTopicCount() {
+    const count = document.querySelectorAll('input[name="interest"]:checked').length;
+    const counterEl = document.getElementById('active-topics-count');
+    if (counterEl) counterEl.querySelector('span').textContent = count;
+}
+
+document.querySelectorAll('.interest-select-card').forEach(label => {
+    const input = label.querySelector('input[type="checkbox"]');
+    if (input) {
+        label.addEventListener('click', () => {
+            setTimeout(() => {
+                if (input.checked) {
+                    label.classList.add('checked');
+                } else {
+                    label.classList.remove('checked');
+                }
+                updateTopicCount();
+            }, 10);
+        });
+    }
+});
+
+// Lookup Form
+const lookupForm = document.getElementById('lookup-form');
+if (lookupForm) {
+    lookupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const val = document.getElementById('lookup-email').value.trim();
+        if (val) {
+            if (window.AccountManager) AccountManager.addAccount(val);
+            window.location.href = `/preferences?email=${encodeURIComponent(val)}`;
+        }
+    });
+}
+
+// Topic Preferences Form Submission
+const prefForm = document.getElementById('preferences-form');
+if (prefForm) {
+    prefForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const emailInput = document.getElementById('email');
+        const email = emailInput ? emailInput.value.trim() : '';
+        const checkboxes = document.querySelectorAll('input[name="interest"]:checked');
+        const interests = Array.from(checkboxes).map(cb => cb.value);
+        const btn = document.getElementById('save-pref-btn');
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoader = btn.querySelector('.btn-loader');
+        const msgDiv = document.getElementById('pref-message');
+
+        btn.disabled = true;
+        btnText.textContent = 'Saving...';
+        btnLoader.style.display = 'inline-block';
+        msgDiv.style.display = 'none';
+
+        try {
+            const response = await fetch(`/api/preferences?email=${encodeURIComponent(email)}&interests=${encodeURIComponent(interests.join(','))}`, {
+                method: 'PUT'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                msgDiv.className = 'message success';
+                msgDiv.textContent = '✓ Preferences updated successfully! Future daily quotes will reflect your choices.';
+                msgDiv.style.display = 'block';
+                showToast('✓ Preferences saved successfully! ✨');
+            } else {
+                msgDiv.className = 'message error';
+                msgDiv.textContent = data.detail || 'Failed to update preferences.';
+                msgDiv.style.display = 'block';
+            }
+        } catch (error) {
+            msgDiv.className = 'message error';
+            msgDiv.textContent = 'Network error. Please try again.';
+            msgDiv.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btnText.textContent = 'Save Preferences ✨';
+            btnLoader.style.display = 'none';
+        }
+    });
+}
+
+// User Feedback Form Submission
+const feedbackForm = document.getElementById('feedback-submit-form');
+if (feedbackForm) {
+    feedbackForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('user-email-feedback').value.trim();
+        const selectedRadio = document.querySelector('input[name="feedback_type"]:checked');
+        const feedbackType = selectedRadio ? selectedRadio.value : 'general';
+        const comment = document.getElementById('feedback-comment-text').value.trim();
+        const rating = parseInt(document.getElementById('feedback-rating-val').value) || 5;
+
+        const btn = document.getElementById('btn-submit-feedback');
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoader = btn.querySelector('.btn-loader');
+        const statusDiv = document.getElementById('feedback-status-message');
+
+        btn.disabled = true;
+        btnText.textContent = 'Sending to promotionp270@gmail.com...';
+        btnLoader.style.display = 'inline-block';
+        statusDiv.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/feedback/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    feedback_type: feedbackType,
+                    comment: comment,
+                    rating: rating
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                statusDiv.className = 'message success';
+                statusDiv.textContent = '🎉 ' + (data.message || 'Thank you! Your feedback has been sent to our team.');
+                statusDiv.style.display = 'block';
+                document.getElementById('feedback-comment-text').value = '';
+                showToast('✓ Feedback sent successfully to promotionp270@gmail.com! ✨');
+            } else {
+                statusDiv.className = 'message error';
+                statusDiv.textContent = data.detail || 'Failed to submit feedback. Please try again.';
+                statusDiv.style.display = 'block';
+            }
+        } catch (err) {
+            statusDiv.className = 'message error';
+            statusDiv.textContent = 'Network error while sending feedback. Please try again.';
+            statusDiv.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btnText.textContent = '📨 Send Feedback Directly';
+            btnLoader.style.display = 'none';
+        }
+    });
+}
+
+// Unsubscribe modal logic
+const unsubscribeBtn = document.getElementById('unsubscribe-btn');
+const modal = document.getElementById('unsubscribe-modal');
+const cancelBtn = document.getElementById('cancel-unsubscribe');
+const confirmBtn = document.getElementById('confirm-unsubscribe');
+
+if (unsubscribeBtn && modal) {
+    unsubscribeBtn.addEventListener('click', () => { modal.style.display = 'flex'; });
+    cancelBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+
+    confirmBtn.addEventListener('click', async () => {
+        const email = document.getElementById('email').value;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Processing...';
+
+        try {
+            const response = await fetch(`/api/subscription/unsubscribe?email=${encodeURIComponent(email)}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                if (window.AccountManager) {
+                    AccountManager.removeAccount(email, true);
+                }
+                window.location.href = `/unsubscribe?email=${encodeURIComponent(email)}`;
+            } else {
+                alert('Failed to unsubscribe.');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Yes, Unsubscribe';
+            }
+        } catch (error) {
+            alert('Network error.');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Yes, Unsubscribe';
+        }
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+}
+</script>
+{% endblock %}

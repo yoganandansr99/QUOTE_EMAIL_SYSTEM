@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}You're In! ✨ — Welcome to Daily Inspiration{% endblock %}
+
+{% block content %}
+<div class="auth-page-container">
+    <div class="success-onboard-card reveal-up">
+        <!-- Animated Checkmark -->
+        <div class="checkmark-animation-wrap">
+            <div class="checkmark-circle">
+                <svg class="checkmark-svg" viewBox="0 0 52 52">
+                    <circle class="checkmark-circle-bg" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark-check-path" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="step-indicator-pill">Step 4 of 4 · Complete</div>
+        <h1 class="success-title">You're In! ✨</h1>
+        <p class="success-subtitle">Your first dose of inspiration is on its way.</p>
+
+        <div class="success-delivery-box">
+            <p class="box-note">We sent your first inspirational welcome email to:</p>
+            <div class="target-email-badge">{{ email if email else 'your inbox' }}</div>
+            <p class="box-hint">📧 Check your inbox now — your welcome quote & story are waiting.</p>
+        </div>
+
+        <!-- Interest Topic Customization -->
+        <div class="onboard-topics-box">
+            <h2 class="topics-heading">Choose What Inspires You Most</h2>
+            <p class="topics-sub">Select the topics you'd like to focus on (you can change these anytime):</p>
+
+            <form id="onboard-topics-form" class="topics-form">
+                <div class="interests-grid-two-col">
+                    <label class="interest-select-card checked">
+                        <input type="checkbox" name="interest" value="success" checked>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">🏆</span>
+                            <strong>Success</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card">
+                        <input type="checkbox" name="interest" value="career">
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">💼</span>
+                            <strong>Career</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card">
+                        <input type="checkbox" name="interest" value="study">
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">📚</span>
+                            <strong>Study</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card checked">
+                        <input type="checkbox" name="interest" value="personal_growth" checked>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">🌱</span>
+                            <strong>Personal Growth</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card">
+                        <input type="checkbox" name="interest" value="leadership">
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">👑</span>
+                            <strong>Leadership</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card checked">
+                        <input type="checkbox" name="interest" value="discipline" checked>
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">⚡</span>
+                            <strong>Discipline</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card">
+                        <input type="checkbox" name="interest" value="entrepreneurship">
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">🚀</span>
+                            <strong>Entrepreneurship</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card">
+                        <input type="checkbox" name="interest" value="failure_resilience">
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">💪</span>
+                            <strong>Resilience</strong>
+                        </div>
+                    </label>
+
+                    <label class="interest-select-card">
+                        <input type="checkbox" name="interest" value="happiness">
+                        <span class="custom-check-icon"></span>
+                        <div class="topic-info">
+                            <span class="topic-emoji">😊</span>
+                            <strong>Happiness</strong>
+                        </div>
+                    </label>
+                </div>
+
+                <input type="hidden" id="email" value="{{ email }}">
+
+                <button type="submit" class="btn-primary btn-full-width btn-save-topics" id="btn-save-onboard">
+                    <span class="btn-text">Save Topics & Finish →</span>
+                    <span class="btn-loader" style="display: none;">
+                        <span class="spinner"></span>
+                    </span>
+                </button>
+
+                <p class="skip-note">or <a href="/" id="skip-link">skip to home page</a></p>
+            </form>
+
+            <div id="onboard-message" class="message" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.interest-select-card').forEach(label => {
+    const input = label.querySelector('input[type="checkbox"]');
+    if (input) {
+        label.addEventListener('click', () => {
+            setTimeout(() => {
+                if (input.checked) {
+                    label.classList.add('checked');
+                } else {
+                    label.classList.remove('checked');
+                }
+            }, 10);
+        });
+    }
+});
+
+const emailVal = document.getElementById('email').value || localStorage.getItem('daily_inspiration_user_email') || '';
+
+document.getElementById('skip-link').addEventListener('click', function(e) {
+    e.preventDefault();
+    window.location.href = '/';
+});
+
+document.getElementById('onboard-topics-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const email = emailVal;
+    const checkboxes = document.querySelectorAll('input[name="interest"]:checked');
+    const interests = Array.from(checkboxes).map(cb => cb.value);
+
+    const btn = document.getElementById('btn-save-onboard');
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+    const messageDiv = document.getElementById('onboard-message');
+
+    if (!email) {
+        window.location.href = '/';
+        return;
+    }
+
+    btn.disabled = true;
+    btnText.textContent = 'Saving...';
+    btnLoader.style.display = 'inline-block';
+
+    try {
+        const response = await fetch(`/api/preferences?email=${encodeURIComponent(email)}&interests=${encodeURIComponent(interests.join(','))}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showMessage('onboard-message', '✓ Preferences saved! Redirecting to home page...', 'success');
+            setTimeout(() => {
+                window.location.href = '/?subscribed=true';
+            }, 800);
+        } else {
+            showMessage('onboard-message', data.detail || 'Failed to save preferences.', 'error');
+            btn.disabled = false;
+            btnText.textContent = 'Save Topics & Finish →';
+            btnLoader.style.display = 'none';
+        }
+    } catch (error) {
+        showMessage('onboard-message', 'Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btnText.textContent = 'Save Topics & Finish →';
+        btnLoader.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

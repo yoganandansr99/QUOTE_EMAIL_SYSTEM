@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Share Your Feedback — Daily Inspiration{% endblock %}
+
+{% block content %}
+<div class="preferences-page-wrapper">
+    <div class="preferences-main-container reveal-up">
+        <div class="page-header-center">
+            <div class="pill-badge">
+                <span class="sparkle-icon">💬</span>
+                <span>Subscriber Feedback & Control</span>
+            </div>
+            <h1 class="page-title">We Value Your Feedback</h1>
+            <p class="page-subtitle">Your thoughts, suggestions, and reactions help us make your morning emails even more inspiring.</p>
+        </div>
+
+        <!-- Multi-Account Quick Switcher Bar -->
+        <div id="quick-account-switcher-placeholder"></div>
+
+        {% if not email %}
+        <!-- Email Lookup Card -->
+        <div class="account-lookup-box">
+            <div class="lookup-icon-circle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </div>
+            <h3>Access Your Account</h3>
+            <p>Enter the email address you subscribed with to submit feedback or manage your subscription.</p>
+
+            <form id="lookup-form" class="lookup-input-form">
+                <div class="input-action-group">
+                    <input type="email" id="lookup-email" placeholder="Enter your email address..." required autocomplete="email" class="custom-email-input">
+                    <button type="submit" class="btn-primary">
+                        <span>Access Panel →</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% else %}
+        <!-- Account Status Header -->
+        <div class="account-status-bar">
+            <div class="status-col">
+                <span class="status-label">Active Account:</span>
+                <strong class="status-val">{{ email }}</strong>
+            </div>
+            <div class="status-col" style="display:flex; align-items:center; gap:10px;">
+                <span class="status-pill status-{{ 'active' if is_verified else 'inactive' }}">
+                    <span class="status-dot"></span>
+                    <span>{{ 'Verified Subscriber' if is_verified else 'Pending Verification' }}</span>
+                </span>
+                <button type="button" onclick="AccountManager.openModal()" class="btn-manage-all-accounts" style="background:#ffffff; border:1px solid var(--border-subtle); padding:6px 12px; font-size:12px;">
+                    🔄 Switch Account
+                </button>
+            </div>
+        </div>
+
+        <div class="preferences-card-box">
+            <div class="pref-card-header">
+                <div>
+                    <h2>Send Feedback to Our Team</h2>
+                    <p>Share your ideas, suggest favorite quotes, or let us know how your mornings are going.</p>
+                </div>
+                <div style="background:#e0e7ff; color:#4338ca; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:20px; display:flex; align-items:center; gap:5px;">
+                    <span>✉️ Direct to promotionp270@gmail.com</span>
+                </div>
+            </div>
+
+            <form id="feedback-submit-form" class="preferences-form-grid" style="display: flex; flex-direction: column; gap: 20px;">
+                <input type="hidden" id="user-email-hidden" value="{{ email }}">
+
+                <!-- Feedback Category Type Selection -->
+                <div>
+                    <label style="display:block; font-size:13.5px; font-weight:700; color:var(--text-heading); margin-bottom:10px;">
+                        What type of feedback are you sharing?
+                    </label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                        <label class="feedback-type-pill active">
+                            <input type="radio" name="feedback_type" value="general" checked style="display:none;">
+                            <span>💬 General Feedback</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="loved" style="display:none;">
+                            <span>❤️ Loving the Quotes</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="suggestion" style="display:none;">
+                            <span>💡 Feature Idea</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="quote_request" style="display:none;">
+                            <span>📖 Quote Suggestion</span>
+                        </label>
+                        <label class="feedback-type-pill">
+                            <input type="radio" name="feedback_type" value="issue" style="display:none;">
+                            <span>⚠️ Report Issue</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Star Rating -->
+                <div>
+                    <label style="display:block; font-size:13.5px; font-weight:700; color:var(--text-heading); margin-bottom:8px;">
+                        How would you rate your Daily Inspiration experience?
+                    </label>
+                    <div class="star-rating-row" id="star-rating-container">
+                        <span class="star-btn active" data-rating="1">★</span>
+                        <span class="star-btn active" data-rating="2">★</span>
+                        <span class="star-btn active" data-rating="3">★</span>
+                        <span class="star-btn active" data-rating="4">★</span>
+                        <span class="star-btn active" data-rating="5">★</span>
+                        <span id="star-rating-label" style="font-size:13.5px; font-weight:600; color:var(--text-secondary); margin-left:10px;">5 / 5 Stars</span>
+                    </div>
+                    <input type="hidden" id="feedback-rating-val" value="5">
+                </div>
+
+                <!-- Detailed Comment Textarea -->
+                <div>
+                    <label for="feedback-comment-text" style="display:block; font-size:13.5px; font-weight:700; color:var(--text-heading); margin-bottom:8px;">
+                        Your Message / Suggestions:
+                    </label>
+                    <textarea id="feedback-comment-text" rows="5" placeholder="Tell us what you like, quote recommendations, or what we can do to make your mornings brighter..." required style="width: 100%; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; font-family: inherit; font-size: 14.5px; line-height: 1.6; outline: none; transition: var(--transition); resize: vertical;"></textarea>
+                </div>
+
+                <!-- Action Button & Status Alert -->
+                <div class="pref-actions-bar" style="margin-top: 10px;">
+                    <div id="feedback-status-message" class="message" style="display: none; margin: 0; flex: 1;"></div>
+                    <button type="submit" class="btn-primary" id="btn-submit-feedback">
+                        <span class="btn-text">📨 Send Feedback Directly</span>
+                        <span class="btn-loader" style="display: none;"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if feedback_history and feedback_history|length > 0 %}
+        <!-- Previous Feedback History -->
+        <div class="preferences-card-box" style="margin-top: 28px;">
+            <div class="pref-card-header">
+                <div>
+                    <h3>Your Previous Feedback</h3>
+                    <p>History of feedback and reactions submitted from this account.</p>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                {% for item in feedback_history %}
+                <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px 18px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="background: #e0e7ff; color: #4338ca; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+                            {{ item.feedback_type|upper }}
+                        </span>
+                        <span style="font-size: 12px; color: var(--text-muted);">
+                            {{ item.created_at.strftime('%b %d, %Y') if item.created_at else '' }}
+                        </span>
+                    </div>
+                    {% if item.rating %}
+                    <div style="color: #f59e0b; font-size: 13px; margin-bottom: 4px;">
+                        {% for i in range(item.rating) %}★{% endfor %}
+                    </div>
+                    {% endif %}
+                    <p style="margin: 0; font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;">
+                        {{ item.comment or 'Recorded reaction to daily email quote.' }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Account Controls & Unsubscribe -->
+        <div class="pref-footer-links" style="margin-top: 24px; text-align: center;">
+            <a href="/unsubscribe?email={{ email }}" class="btn-unsubscribe-trigger" style="color: var(--text-muted); font-size: 13px;">
+                Need to pause or unsubscribe? Click here
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    {% if email %}
+    if (window.AccountManager) {
+        AccountManager.addAccount('{{ email }}');
+        AccountManager.renderPreferencesSwitcher();
+    }
+    {% endif %}
+
+    const lookupInput = document.getElementById('lookup-email');
+    if (lookupInput && window.AccountManager) {
+        const active = AccountManager.getActiveAccount();
+        if (active) lookupInput.value = active;
+    }
+
+    // Feedback Type Radio Pills
+    document.querySelectorAll('.feedback-type-pill').forEach(pill => {
+        pill.addEventListener('click', function() {
+            document.querySelectorAll('.feedback-type-pill').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            const radio = this.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+
+    // Star Rating Interaction
+    const starBtns = document.querySelectorAll('.star-btn');
+    const ratingInput = document.getElementById('feedback-rating-val');
+    const ratingLabel = document.getElementById('star-rating-label');
+
+    starBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            if (ratingInput) ratingInput.value = rating;
+            if (ratingLabel) ratingLabel.textContent = `${rating} / 5 Stars`;
+
+            starBtns.forEach(b => {
+                const bRating = parseInt(b.dataset.rating);
+                if (bRating <= rating) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+        });
+    });
+
+    // Lookup Form
+    const lookupForm = document.getElementById('lookup-form');
+    if (lookupForm) {
+        lookupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = document.getElementById('lookup-email').value.trim();
+            if (val) {
+                if (window.AccountManager) AccountManager.addAccount(val);
+                window.location.href = `/feedback?email=${encodeURIComponent(val)}`;
+            }
+        });
+    }
+
+    // Feedback Form Submission
+    const feedbackForm = document.getElementById('feedback-submit-form');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('user-email-hidden').value.trim();
+            const selectedRadio = document.querySelector('input[name="feedback_type"]:checked');
+            const feedbackType = selectedRadio ? selectedRadio.value : 'general';
+            const comment = document.getElementById('feedback-comment-text').value.trim();
+            const rating = parseInt(document.getElementById('feedback-rating-val').value) || 5;
+
+            const btn = document.getElementById('btn-submit-feedback');
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoader = btn.querySelector('.btn-loader');
+            const statusDiv = document.getElementById('feedback-status-message');
+
+            btn.disabled = true;
+            btnText.textContent = 'Sending to promotionp270@gmail.com...';
+            btnLoader.style.display = 'inline-block';
+            statusDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/feedback/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        feedback_type: feedbackType,
+                        comment: comment,
+                        rating: rating
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.className = 'message success';
+                    statusDiv.textContent = '🎉 ' + (data.message || 'Thank you! Your feedback has been sent to our team.');
+                    statusDiv.style.display = 'block';
+                    document.getElementById('feedback-comment-text').value = '';
+                    showToast('✓ Feedback sent successfully to promotionp270@gmail.com! ✨');
+                } else {
+                    statusDiv.className = 'message error';
+                    statusDiv.textContent = data.detail || 'Failed to submit feedback. Please try again.';
+                    statusDiv.style.display = 'block';
+                }
+            } catch (err) {
+                statusDiv.className = 'message error';
+                statusDiv.textContent = 'Network error while sending feedback. Please try again.';
+                statusDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = '📨 Send Feedback Directly';
+                btnLoader.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

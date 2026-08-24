@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Daily Inspiration — Start every morning with something worth remembering. Handpicked quotes, inspiring stories, and stunning imagery delivered to your inbox daily at 8:00 AM.">
+    <title>{% block title %}Daily Inspiration — Start Every Morning With Something Worth Remembering{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}?v=4.0">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <header class="navbar-wrapper" id="site-header">
+        <div class="navbar-container">
+            <a href="/" class="brand-logo" id="site-logo">
+                <span class="logo-sparkle">✨</span>
+                <span class="logo-text">Daily Inspiration</span>
+            </a>
+            
+            <nav class="nav-links" id="main-nav">
+                <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">Home</a>
+                <a href="/sample-email" class="nav-item {% if request.url.path == '/sample-email' %}active{% endif %}">Sample Email</a>
+                <a href="/features" class="nav-item {% if request.url.path == '/features' %}active{% endif %}">Features</a>
+                <a href="/how-it-works" class="nav-item {% if request.url.path == '/how-it-works' %}active{% endif %}">How It Works</a>
+                <a href="/feedback" class="nav-item {% if request.url.path == '/feedback' %}active{% endif %}">Feedback</a>
+                <a href="/about" class="nav-item {% if request.url.path == '/about' %}active{% endif %}">About</a>
+            </nav>
+
+            <div class="nav-actions">
+                {% if user_email %}
+                <a href="/preferences?email={{ user_email }}" class="btn-nav-cta" id="nav-account-btn">
+                    <span>My Account</span>
+                </a>
+                {% else %}
+                <a href="/#subscribe-form" class="btn-nav-cta" id="nav-subscribe-btn">
+                    <span>✨ Subscribe Free</span>
+                </a>
+                {% endif %}
+                
+                <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Slot -->
+    <main id="main-content" class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Professional Dark Footer -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-top-grid">
+                <div class="footer-brand-col">
+                    <a href="/" class="footer-logo">
+                        <span class="logo-sparkle">✨</span>
+                        <span class="logo-text">Daily Inspiration</span>
+                    </a>
+                    <p class="footer-tagline">Start your day with something meaningful. One quote, one story, and one small action every morning.</p>
+                </div>
+
+                <div class="footer-nav-col">
+                    <h4>Product</h4>
+                    <a href="/features">Features</a>
+                    <a href="/sample-email">Sample Email</a>
+                    <a href="/how-it-works">How It Works</a>
+                </div>
+
+                <div class="footer-nav-col">
+                    <h4>Community</h4>
+                    <a href="/feedback">Feedback</a>
+                    <a href="/about">About Us</a>
+                </div>
+
+                <div class="footer-nav-col">
+                    <h4>Legal & Control</h4>
+                    <a href="/about">Privacy</a>
+                    <a href="/about">Terms</a>
+                    <a href="/unsubscribe" id="footer-unsub-link">Unsubscribe</a>
+                </div>
+            </div>
+
+            <div class="footer-bottom-row">
+                <p>© 2026 Daily Inspiration. Made to brighten your mornings.</p>
+                <div class="footer-perk-badge">🌅 Sent Daily at 8:00 AM · 100% Free</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Toast Notification -->
+    <div id="global-toast" class="toast-notification"></div>
+
+    <script src="/static/js/main.js?v=4.0"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

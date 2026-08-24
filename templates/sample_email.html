@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Sample Daily Email — Your Inbox, But Better{% endblock %}
+
+{% block content %}
+<div class="page-header-wrapper reveal-up">
+    <div class="pill-badge">
+        <span class="sparkle-icon">📬</span>
+        <span>Real Email Preview</span>
+    </div>
+    <h1 class="page-title">Your Inbox, But Better.</h1>
+    <p class="page-subtitle">Here's what your morning inspiration could look like every day at 8:00 AM.</p>
+</div>
+
+<!-- Interactive Theme Switcher -->
+<div class="sample-switcher-bar reveal-up">
+    <span class="switcher-label">Preview Theme:</span>
+    <div class="switcher-buttons">
+        <button class="switcher-btn active" data-sample="morning">
+            <span>🌅</span> Morning Motivation
+        </button>
+        <button class="switcher-btn" data-sample="resilience">
+            <span>⚡</span> Courage & Resilience
+        </button>
+        <button class="switcher-btn" data-sample="growth">
+            <span>🌱</span> Growth & Wisdom
+        </button>
+    </div>
+</div>
+
+<!-- Realistic Email Mockup -->
+<div class="email-mockup-frame reveal-up">
+    <div class="mockup-header-strip">
+        <div class="mockup-dots">
+            <span class="dot d-red"></span>
+            <span class="dot d-yellow"></span>
+            <span class="dot d-green"></span>
+        </div>
+        <div class="mockup-subject-bar">
+            <span class="sub-label">Subject:</span>
+            <span class="sub-text" id="sample-subject-text">🌟 Good Morning — Your Daily Dose of Inspiration</span>
+        </div>
+        <div class="mockup-inbox-tag">8:00 AM</div>
+    </div>
+
+    <div class="email-rendered-body" id="sample-rendered-canvas">
+        <div class="email-header-greeting">
+            <h3 class="greeting-title">Good Morning 👋</h3>
+            <p class="greeting-sub">Today's Inspiration · Delivered fresh at 8:00 AM</p>
+        </div>
+
+        <!-- Featured Image -->
+        <div class="email-showcase-image">
+            <img src="/static/images/sample-morning.jpg" id="sample-img-target" alt="Daily Inspirational Landscape" class="full-email-img">
+        </div>
+
+        <!-- Quote -->
+        <div class="email-showcase-quote">
+            <blockquote class="display-quote" id="sample-quote-target">
+                "The secret of getting ahead is getting started. The secret of getting started is breaking your complex overwhelming tasks into small manageable tasks, and starting on the first one."
+            </blockquote>
+            <cite class="display-author" id="sample-author-target">— Mark Twain</cite>
+        </div>
+
+        <!-- 3 Pillars -->
+        <div class="email-details-stack">
+            <div class="detail-box box-person">
+                <h4 class="box-title">PERSON OF THE DAY</h4>
+                <p class="box-text" id="sample-person-target">
+                    <strong>Mark Twain (1835 – 1910)</strong> — Faced bankruptcy and severe personal setbacks in his fifties. Instead of giving up, he embarked on worldwide speaking tours and methodically wrote every day to triumph over adversity.
+                </p>
+            </div>
+
+            <div class="detail-box box-thought">
+                <h4 class="box-title">TODAY'S THOUGHT</h4>
+                <p class="box-text" id="sample-thought-target">
+                    Most overwhelming goals don't fail due to lack of ability; they stall because the starting line feels too large. Today, focus on simply doing the very first small action.
+                </p>
+            </div>
+
+            <div class="detail-box box-challenge">
+                <h4 class="box-title">TODAY'S CHALLENGE</h4>
+                <p class="box-text" id="sample-challenge-target">
+                    Set a 5-minute timer and begin the very first step of an important task you have put off.
+                </p>
+            </div>
+        </div>
+
+        <!-- Feedback -->
+        <div class="email-feedback-actions">
+            <p class="feedback-ask">Did this inspire your morning?</p>
+            <div class="feedback-button-row">
+                <button class="feedback-pill-btn" data-reaction="loved">
+                    <span>❤️</span> Loved it
+                </button>
+                <button class="feedback-pill-btn" data-reaction="useful">
+                    <span>👍</span> Useful
+                </button>
+            </div>
+        </div>
+
+        <!-- Meta Footer -->
+        <div class="email-meta-footer">
+            <p>You received this because you subscribed to Daily Inspiration.</p>
+            <div class="meta-footer-links">
+                <a href="/unsubscribe">Unsubscribe</a> • 
+                <a href="/preferences">Manage Preferences</a> • 
+                <a href="/about">About Us</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom CTA -->
+<div class="page-bottom-cta reveal-up">
+    <h2>Ready to Receive This Tomorrow Morning?</h2>
+    <p>Join thousands of people who start their day with clarity and purpose.</p>
+    <a href="/#subscribe-form" class="btn-primary btn-large">
+        <span>✨ Start My Free Daily Inspiration</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const sampleThemes = {
+    morning: {
+        subject: "🌟 Good Morning — Your Daily Dose of Inspiration (Aug 21)",
+        quote: "The secret of getting ahead is getting started. The secret of getting started is breaking your complex overwhelming tasks into small manageable tasks, and starting on the first one.",
+        author: "— Mark Twain",
+        image: "/static/images/sample-morning.jpg",
+        person: "<strong>Mark Twain (1835 – 1910)</strong> — Faced bankruptcy and severe personal setbacks in his fifties. Instead of giving up, he embarked on worldwide speaking tours and methodically wrote every day to triumph over adversity.",
+        thought: "Most overwhelming goals don't fail due to lack of ability; they stall because the starting line feels too large. Today, focus on simply doing the very first small action.",
+        challenge: "Set a 5-minute timer and begin the very first step of an important task you have put off."
+    },
+    resilience: {
+        subject: "🌟 Courage & Resilience — Your Daily Dose of Inspiration (Aug 21)",
+        quote: "Success is not final, failure is not fatal: It is the courage to continue that counts in the darkest hours.",
+        author: "— Winston Churchill",
+        image: "/static/images/sample-resilience.jpg",
+        person: "<strong>Winston Churchill (1874 – 1965)</strong> — Overcame crushing military failures and political isolation during the 1930s to lead Britain through its darkest hours with unbreakable determination.",
+        thought: "Setbacks are not stop signs; they are pivots. When friction arises today, reframe it not as a defeat, but as training that sharpens your resolve.",
+        challenge: "Write down one recent setback you encountered and identify two specific lessons it taught you."
+    },
+    growth: {
+        subject: "🌟 Daily Wisdom & Focus — Your Daily Dose of Inspiration (Aug 21)",
+        quote: "Do not dwell in the past, do not dream of the future, concentrate the mind on the present moment.",
+        author: "— Gautama Buddha",
+        image: "/static/images/sample-growth.jpg",
+        person: "<strong>Gautama Buddha (c. 5th century BCE)</strong> — Dedicated his life to mindfulness, philosophical inquiry, and inner peace, teaching millions that clarity begins from stillness.",
+        thought: "In a world of rapid notifications and hurried routines, granting yourself just three quiet minutes of morning presence creates immense mental peace.",
+        challenge: "Take 3 deep mindful breaths before starting your work session, and dedicate 15 minutes today to reading something enriching."
+    }
+};
+
+document.querySelectorAll('.switcher-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.switcher-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        const key = this.dataset.sample;
+        const data = sampleThemes[key];
+        if (data) {
+            const canvas = document.getElementById('sample-rendered-canvas');
+            canvas.style.opacity = '0.35';
+            
+            setTimeout(() => {
+                document.getElementById('sample-subject-text').textContent = data.subject;
+                document.getElementById('sample-quote-target').textContent = `"${data.quote}"`;
+                document.getElementById('sample-author-target').textContent = data.author;
+                document.getElementById('sample-img-target').src = data.image;
+                document.getElementById('sample-person-target').innerHTML = data.person;
+                document.getElementById('sample-thought-target').textContent = data.thought;
+                document.getElementById('sample-challenge-target').textContent = data.challenge;
+                
+                canvas.style.opacity = '1';
+            }, 150);
+        }
+    });
+});
+
+document.querySelectorAll('.feedback-pill-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.feedback-pill-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        showToast(this.dataset.reaction === 'loved' ? '❤️ Glad you loved this sample!' : '👍 Feedback recorded!');
+    });
+});
+</script>
+{% endblock %}
