@@ -31,7 +31,7 @@ jobs:
             -X POST "$ENDPOINT" \
             -H "Content-Type: application/json" \
             -H "X-Cron-Secret: $CRON_SECRET" \
-            --max-time 180)
+            --max-time 1000)
           
           BODY=$(echo "$RESPONSE" | sed -e '$d')
           HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | sed -e 's/HTTP_STATUS://')
