@@ -1,6 +1,3 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
 from datetime import datetime
 import httpx
@@ -14,19 +11,10 @@ from core.config import settings
 
 class EmailService:
     def __init__(self):
-        self.smtp_host = settings.smtp_host
-        self.smtp_port = settings.smtp_port
-        self.smtp_user = settings.smtp_user
-        self.smtp_password = settings.smtp_password
+        self.api_key = settings.resend_api_key
         self.email_from = settings.email_from
         self.email_from_name = settings.email_from_name
-    
-    def _create_smtp_connection(self) -> smtplib.SMTP:
-        """Create and return an SMTP connection."""
-        server = smtplib.SMTP(self.smtp_host, self.smtp_port)
-        server.starttls()
-        server.login(self.smtp_user, self.smtp_password)
-        return server
+        self.api_url = "https://api.resend.com/emails"
     
     async def send_otp_email(self, to_email: str, otp: str) -> bool:
         """Send OTP verification email."""
@@ -184,23 +172,51 @@ class EmailService:
         return await self._send_email(admin_email, subject, body)
     
     async def _send_email(self, to_email: str, subject: str, body: str) -> bool:
-        """Internal method to send an email."""
+        """
+        Send an email via the Resend HTTPS API.
+        Does not use SMTP/smtplib so it works reliably on Render Free tiers and cloud platforms.
+        """
+        api_key = self.api_key or settings.resend_api_key
+        if not api_key:
+            print("Resend Error: RESEND_API_KEY is not configured in environment.")
+            return False
+
+        from_addr = self.email_from or settings.email_from or "onboarding@resend.dev"
+        from_name = self.email_from_name or settings.email_from_name or "Daily Inspiration"
+        from_header = f"{from_name} <{from_addr}>" if from_name and "@" not in from_name else from_addr
+
+        headers = {
+            "Authorization": f"Bearer {api_key.strip()}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "from": from_header,
+            "to": [to_email],
+            "subject": subject,
+            "html": body
+        }
+
         try:
-            msg = MIMEMultipart("alternative")
-            msg["From"] = f"{self.email_from_name} <{self.email_from}>"
-            msg["To"] = to_email
-            msg["Subject"] = subject
-            
-            html_part = MIMEText(body, "html")
-            msg.attach(html_part)
-            
-            server = self._create_smtp_connection()
-            server.sendmail(self.email_from, to_email, msg.as_string())
-            server.quit()
-            
-            return True
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.post(self.api_url, headers=headers, json=payload)
+
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    if data and "id" in data:
+                        return True
+                    return True
+                else:
+                    error_msg = response.text
+                    try:
+                        err_json = response.json()
+                        error_msg = err_json.get("message") or err_json.get("name") or error_msg
+                    except Exception:
+                        pass
+                    print(f"Resend API Error (HTTP {response.status_code}): {error_msg}")
+                    return False
         except Exception as e:
-            print(f"Failed to send email: {str(e)}")
+            print(f"Resend HTTP dispatch failed: {str(e)}")
             return False
 
 

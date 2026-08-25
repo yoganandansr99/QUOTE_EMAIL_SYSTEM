@@ -4,7 +4,10 @@ from .response import (
     SubscriptionStatusResponse,
     PreferencesResponse,
     FeedbackResponse,
-    ErrorResponse
+    ErrorResponse,
+    GoogleAuthRequest,
+    GoogleAuthResponse,
+    GoogleClientIdResponse
 )
 
 __all__ = [
@@ -13,5 +16,8 @@ __all__ = [
     "SubscriptionStatusResponse",
     "PreferencesResponse",
     "FeedbackResponse",
-    "ErrorResponse"
+    "ErrorResponse",
+    "GoogleAuthRequest",
+    "GoogleAuthResponse",
+    "GoogleClientIdResponse"
 ]

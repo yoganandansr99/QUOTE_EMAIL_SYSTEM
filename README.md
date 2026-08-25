@@ -28,9 +28,9 @@ flowchart TD
     JOB -->|Exclude 365-day sent quotes| DB
     JOB -->|Select eligible quote| DB
     JOB -->|Fetch / cached image| PEXELS[Pexels API]
-    JOB -->|Send customized HTML email| SMTP[Gmail / SMTP Service]
-    SMTP -->|On Success| DH[(Save delivery_history & email_logs)]
-    SMTP -->|On Failure| EL[(Log to email_logs only)]
+    JOB -->|Send customized HTML email via HTTPS| RESEND[Resend Email API]
+    RESEND -->|On Success| DH[(Save delivery_history & email_logs)]
+    RESEND -->|On Failure| EL[(Log to email_logs only)]
 ```
 
 ---
@@ -59,7 +59,7 @@ Fast_pro/
 │   ├── feedback.py                 # User feedback schema
 │   └── __init__.py
 ├── routers/
-│   ├── subscription.py             # OTP request, verify, unsubscribe
+│   ├── subscription.py             # OTP request, verify, unsubscribe, Google Auth
 │   ├── preferences.py              # User category customization
 │   ├── feedback.py                 # Feedback submission endpoints
 │   ├── jobs.py                     # Protected cron job endpoints
@@ -69,13 +69,13 @@ Fast_pro/
 ├── services/
 │   ├── quote_service.py            # Dataset import, categorization, 365-day selection
 │   ├── scheduler_service.py        # Daily inspiration dispatch engine
-│   ├── email_service.py            # SMTP transport & Jinja2 email builder
+│   ├── email_service.py            # Resend HTTPS API transport & Jinja2 email builder
 │   ├── image_service.py            # Pexels image fetcher & local fallback
 │   ├── otp_service.py              # Secure OTP generation & SHA-256 verification
 │   └── __init__.py
 ├── static/                         # Frontend CSS, JS, and UI assets
 ├── templates/                      # Jinja2 HTML templates
-├── tests/                          # Automated Pytest suite (31 unit tests)
+├── tests/                          # Automated Pytest suite (40+ unit tests)
 ├── .env.example                    # Environment variables template
 ├── requirements.txt                # Python dependencies
 └── run.py                          # Local development runner
@@ -98,16 +98,16 @@ Configure the following variables in `.env`:
 MONGODB_URL=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
 MONGODB_DB_NAME=daily_inspiration
 
-# 2. Email Configuration (Gmail SMTP)
-# Generate an App Password: Google Account -> Security -> 2-Step Verification -> App Passwords
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-16-character-app-password
-EMAIL_FROM=your-email@gmail.com
+# 2. Email Configuration (Resend HTTPS API - No SMTP ports blocked on Render)
+# Sign up and get your API key at: https://resend.com/api-keys
+RESEND_API_KEY=re_your_resend_api_key_here
+EMAIL_FROM=onboarding@resend.dev
 EMAIL_FROM_NAME=Daily Inspiration
 
-# 3. Pexels API (Free at https://www.pexels.com/api/)
+# 3. Google OAuth Configuration (Optional, for Continue with Google)
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+
+# 4. Pexels API (Free at https://www.pexels.com/api/)
 PEXELS_API_KEY=your-pexels-api-key
 
 # 4. Application Security & Job Protection
@@ -193,8 +193,9 @@ pytest -v
    Under the **Environment** tab on Render, add:
    - `MONGODB_URL`
    - `MONGODB_DB_NAME`
-   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
+   - `RESEND_API_KEY`
    - `EMAIL_FROM`, `EMAIL_FROM_NAME`
+   - `GOOGLE_CLIENT_ID` (Optional)
    - `PEXELS_API_KEY`
    - `SECRET_KEY`
    - `CRON_SECRET`

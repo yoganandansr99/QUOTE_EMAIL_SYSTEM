@@ -10,16 +10,14 @@ class Settings(BaseSettings):
     mongodb_url: str = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
     mongodb_db_name: str = os.getenv("MONGODB_DB_NAME", "daily_inspiration")
     
-    # Email/SMTP
-    smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user: str = os.getenv("SMTP_USER", "")
-    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
-    email_from: str = os.getenv("EMAIL_FROM", "")
+    # Email Service (Resend HTTPS API)
+    resend_api_key: str = os.getenv("RESEND_API_KEY", "")
+    email_from: str = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
     email_from_name: str = os.getenv("EMAIL_FROM_NAME", "Daily Inspiration")
     
-    # External APIs
+    # External APIs & OAuth
     pexels_api_key: str = os.getenv("PEXELS_API_KEY", "")
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
     
     # App Settings
     admin_feedback_email: str = os.getenv("ADMIN_FEEDBACK_EMAIL", "promotionp270@gmail.com")

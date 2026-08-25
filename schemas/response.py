@@ -37,3 +37,25 @@ class FeedbackResponse(BaseModel):
 class ErrorResponse(BaseModel):
     detail: str
     success: bool = False
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = None  # Google ID token (JWT) from GIS
+    email: Optional[EmailStr] = None
+    name: Optional[str] = None
+    picture: Optional[str] = None
+
+
+class GoogleAuthResponse(BaseModel):
+    message: str
+    success: bool = True
+    email: str
+    is_new: bool = False
+    is_verified: bool = True
+    name: Optional[str] = None
+    picture: Optional[str] = None
+
+
+class GoogleClientIdResponse(BaseModel):
+    client_id: str
+    is_configured: bool = False

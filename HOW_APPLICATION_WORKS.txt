@@ -47,7 +47,7 @@ Key Design Goals:
 +------------------------------------------------------------------------------+
 | Backend Framework    : FastAPI (Python 3.11 / ASGI)                          |
 | Database             : MongoDB Atlas (via Async Motor Driver)                |
-| Email Transport      : SMTP (Gmail App Password / SendGrid / Amazon SES)     |
+| Email Transport      : Resend HTTPS API (No SMTP blocked ports on Render)    |
 | Image Provider       : Pexels REST API (with internal caching & fallback)    |
 | Frontend Engine      : Vanilla HTML5, CSS3 Glassmorphism, Vanilla JavaScript |
 | Templating           : Jinja2                                                |
@@ -62,7 +62,7 @@ SYSTEM FLOW DIAGRAM:
        ▼
 [FastAPI: POST /api/subscription/request-otp] ──> [Generate 6-digit OTP] 
        │                                          [Store SHA-256 hash in MongoDB]
-       │                                          [Send OTP via SMTP]
+       │                                          [Send OTP via Resend HTTPS API]
        ▼
 [User receives OTP email] ──> (2. Enter 6-digit code)
        │
@@ -94,7 +94,7 @@ DAILY AUTOMATED TRIGGER FLOW:
        │      ├─► 4. Select random eligible Quote
        │      ├─► 5. Check if quote has cached image (if not, query Pexels & cache)
        │      ├─► 6. Render personalized HTML template (Quote, Story, Challenge, Feedback)
-       │      ├─► 7. Send Email via SMTP
+       │      ├─► 7. Send Email via Resend HTTPS API
        │      └─► 8. ONLY ON SUCCESS -> Insert record into "delivery_history"
        │             ON FAILURE   -> Log error into "email_logs" (Quote is NOT locked)
        │
@@ -273,8 +273,8 @@ Mathematical Proof of Uniqueness:
 - Result: The user experiences an infinite, non-repeating cycle!
 
 Safe Delivery History Logging:
-- `delivery_history` is written **ONLY AFTER** the SMTP server returns success.
-- If SMTP fails (network drop, mail server issue), the failure is recorded in
+- `delivery_history` is written **ONLY AFTER** Resend confirms successful delivery.
+- If Resend API fails (network drop, API error), the failure is recorded in
   `email_logs`, and `delivery_history` is **NOT** updated. This guarantees that
   an undelivered quote is not locked out for 365 days.
 
@@ -400,8 +400,8 @@ Local Setup:
    `pip install -r requirements.txt`
 4. Configure `.env`:
    - `MONGODB_URL=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority`
-   - `SMTP_USER=your-email@gmail.com`
-   - `SMTP_PASSWORD=your-app-password`
+   - `RESEND_API_KEY=re_your-api-key-here`
+   - `EMAIL_FROM=onboarding@resend.dev`
    - `CRON_SECRET=your-secure-secret-here`
 5. Seed Quote Dataset (405 quotes):
    `python scripts/import_quotes.py`
@@ -410,24 +410,25 @@ Local Setup:
 
 Running Automated Tests:
 ------------------------
-The project includes a comprehensive suite of 31 unit tests covering:
+The project includes a comprehensive suite of unit tests covering:
 - Dataset import & SHA-256 duplicate rejection
 - 9-category rule and keyword categorization
 - 365-day quote exclusion per user
 - Safe delivery history logging (success vs failure)
+- Resend HTTPS email dispatch & error handling
 - OTP security and rate limiting
 - CRON_SECRET 401 unauthorized protection
 - GitHub Actions workflow syntax validation
 
 Execute test suite:
-`pytest -v` (All 31 tests will pass).
+`pytest -v` (All tests will pass).
 
 GitHub Actions & Render Deployment:
 -----------------------------------
 1. Deploy code to Render as a Web Service.
 2. In Render Dashboard -> Environment Variables, add:
-   `MONGODB_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
-   `EMAIL_FROM`, `EMAIL_FROM_NAME`, `PEXELS_API_KEY`, `SECRET_KEY`, `CRON_SECRET`.
+   `MONGODB_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_NAME`,
+   `PEXELS_API_KEY`, `SECRET_KEY`, `CRON_SECRET`.
 3. In GitHub Repository -> Settings -> Secrets and variables -> Actions, add:
    - `APP_URL`     : Your Render app URL (e.g. `https://daily-inspiration-app.onrender.com`)
    - `CRON_SECRET` : The exact secret configured on Render.

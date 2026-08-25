@@ -365,6 +365,103 @@ main {
     box-shadow: none;
 }
 
+/* Google Auth Button & Dividers */
+.google-auth-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.btn-google-auth {
+    width: 100%;
+    background: #ffffff;
+    color: #1f2937;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    padding: 13px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    transition: all 0.25s var(--ease-spring);
+    position: relative;
+}
+
+.btn-google-auth:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.btn-google-auth:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
+}
+
+.btn-google-auth .google-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.btn-google-auth .btn-google-text {
+    color: #1e293b;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+}
+
+.google-badge-quick {
+    font-size: 11px;
+    font-weight: 700;
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    border: 1px solid #bfdbfe;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.google-hidden-btn {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.001;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* Auth Divider ("— or subscribe with email —") */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 16px;
+    width: 100%;
+}
+
+.auth-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-subtle);
+}
+
+.auth-divider-text {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
 .btn-secondary-link {
     display: inline-flex;
     align-items: center;

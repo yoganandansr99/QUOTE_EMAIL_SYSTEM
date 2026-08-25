@@ -108,3 +108,100 @@ class TestSubscription:
         )
 
         assert response.status_code == 404
+
+    async def test_get_google_client_id(self, client: AsyncClient):
+        """Test Google Client ID retrieval endpoint."""
+        response = await client.get("/api/subscription/google-client-id")
+        assert response.status_code == 200
+        data = response.json()
+        assert "client_id" in data
+        assert "is_configured" in data
+
+    async def test_google_auth_new_user_with_token(self, client: AsyncClient, db, test_email):
+        """Test Google Auth creating a new verified user."""
+        mock_payload = {
+            "email": test_email,
+            "email_verified": True,
+            "name": "Google User",
+            "picture": "https://example.com/photo.jpg"
+        }
+
+        with patch("routers.subscription.verify_google_token", new_callable=AsyncMock) as mock_verify, \
+             patch("routers.subscription.send_welcome_email", new_callable=AsyncMock) as mock_welcome:
+            mock_verify.return_value = mock_payload
+
+            response = await client.post(
+                "/api/subscription/google-auth",
+                json={"credential": "mock-google-jwt-token"}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["is_new"] is True
+            assert data["email"] == test_email
+            assert data["name"] == "Google User"
+
+            # Check database user record
+            user = await db.users.find_one({"email": test_email})
+            assert user is not None
+            assert user["status"] == "verified"
+            assert user["auth_provider"] == "google"
+            assert user["name"] == "Google User"
+            mock_welcome.assert_called_once()
+
+    async def test_google_auth_existing_user(self, client: AsyncClient, db, test_email):
+        """Test Google Auth signing in an existing user."""
+        await db.users.insert_one({
+            "email": test_email,
+            "status": "pending",
+            "interests": ["career"]
+        })
+
+        mock_payload = {
+            "email": test_email,
+            "email_verified": True,
+            "name": "Existing User"
+        }
+
+        with patch("routers.subscription.verify_google_token", new_callable=AsyncMock) as mock_verify, \
+             patch("routers.subscription.send_welcome_email", new_callable=AsyncMock) as mock_welcome:
+            mock_verify.return_value = mock_payload
+
+            response = await client.post(
+                "/api/subscription/google-auth",
+                json={"credential": "mock-google-jwt-token"}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["is_new"] is False
+            assert data["email"] == test_email
+
+            user = await db.users.find_one({"email": test_email})
+            assert user["status"] == "verified"
+            assert user["auth_provider"] == "google"
+
+    async def test_google_auth_invalid_token(self, client: AsyncClient):
+        """Test Google Auth with invalid token."""
+        from fastapi import HTTPException
+        with patch("routers.subscription.verify_google_token", side_effect=HTTPException(status_code=400, detail="Invalid Google authentication token.")):
+            response = await client.post(
+                "/api/subscription/google-auth",
+                json={"credential": "invalid-token"}
+            )
+
+            assert response.status_code == 400
+            assert "Invalid Google authentication token" in response.json()["detail"]
+
+    async def test_google_auth_missing_credential(self, client: AsyncClient):
+        """Test Google Auth rejects requests missing genuine credential token."""
+        response = await client.post(
+            "/api/subscription/google-auth",
+            json={"email": "random_fake@gmail.com", "name": "Fake User"}
+        )
+
+        assert response.status_code == 400
+        assert "credential" in response.json()["detail"].lower()
+

@@ -191,6 +191,8 @@ async def api_info():
             "subscription": {
                 "request_otp": "POST /api/subscription/request-otp",
                 "verify_otp": "POST /api/subscription/verify-otp",
+                "google_auth": "POST /api/subscription/google-auth",
+                "google_client_id": "GET /api/subscription/google-client-id",
                 "status": "GET /api/subscription/status",
                 "unsubscribe": "POST /api/subscription/unsubscribe"
             },

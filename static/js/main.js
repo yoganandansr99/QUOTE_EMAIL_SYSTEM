@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileMenu();
     initScrollReveals();
     AccountManager.init();
+    GoogleAuthManager.init();
     checkUrlAlerts();
 });
 
@@ -268,6 +269,22 @@ window.AccountManager = {
         html += `
         <div class="account-modal-add-form">
             <h4>+ Link / Access Another Account</h4>
+            <div style="margin-bottom: 12px;">
+                <button type="button" class="btn-google-auth" onclick="GoogleAuthManager.signIn(); AccountManager.closeModal();" style="padding: 10px 16px; font-size: 14px;">
+                    <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                </button>
+            </div>
+            <div class="auth-divider" style="margin: 10px 0 12px;">
+                <span class="auth-divider-line"></span>
+                <span class="auth-divider-text" style="font-size: 11px;">or enter email</span>
+                <span class="auth-divider-line"></span>
+            </div>
             <form onsubmit="AccountManager.handleLinkAccountForm(event)" class="account-add-input-group">
                 <input type="email" id="modal-add-email-input" class="account-add-input" placeholder="Enter another email address..." required autocomplete="email">
                 <button type="submit" class="btn-add-account">Access Panel</button>
@@ -435,3 +452,169 @@ function checkUrlAlerts() {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
+
+/* --------------------------------------------------------------------------
+   4. GOOGLE AUTHENTICATION MANAGER (Strict Google Identity Services OAuth)
+   -------------------------------------------------------------------------- */
+window.GoogleAuthManager = {
+    clientId: '',
+    isConfigured: false,
+    isInitialized: false,
+
+    async init() {
+        try {
+            const res = await fetch('/api/subscription/google-client-id');
+            if (res.ok) {
+                const data = await res.json();
+                this.clientId = data.client_id || '';
+                this.isConfigured = data.is_configured;
+            }
+        } catch (e) {
+            console.warn('GoogleAuthManager: Failed to fetch client configuration', e);
+        }
+
+        this.setupGIS();
+    },
+
+    setupGIS() {
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id && this.clientId) {
+            try {
+                google.accounts.id.initialize({
+                    client_id: this.clientId,
+                    callback: (response) => this.handleCredentialResponse(response),
+                    auto_select: false,
+                    cancel_on_tap_outside: true
+                });
+                this.isInitialized = true;
+
+                // Render hidden GIS standard button for programmatic click trigger
+                const heroBtn = document.getElementById('google-hidden-btn-hero');
+                if (heroBtn) {
+                    google.accounts.id.renderButton(heroBtn, {
+                        type: 'standard',
+                        theme: 'outline',
+                        size: 'large'
+                    });
+                }
+            } catch (err) {
+                console.warn('GoogleAuthManager: GIS initialization error', err);
+            }
+        } else if (!this.isInitialized && this.clientId) {
+            // Check again if GIS script loads slightly after DOMContentLoaded
+            setTimeout(() => {
+                if (typeof google !== 'undefined' && google.accounts && this.clientId) {
+                    this.setupGIS();
+                }
+            }, 1000);
+        }
+    },
+
+    signIn() {
+        if (!this.isConfigured || !this.clientId) {
+            this.showSetupNotice();
+            return;
+        }
+
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+            if (!this.isInitialized) {
+                this.setupGIS();
+            }
+
+            try {
+                // Trigger GIS One-Tap prompt or click the rendered Google button
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        const btn = document.querySelector('#google-hidden-btn-hero div[role="button"]');
+                        if (btn) btn.click();
+                    }
+                });
+            } catch (e) {
+                const btn = document.querySelector('#google-hidden-btn-hero div[role="button"]');
+                if (btn) btn.click();
+            }
+        } else {
+            showToast('Loading Google Services, please try again in a moment...');
+        }
+    },
+
+    async handleCredentialResponse(response) {
+        if (!response || !response.credential) {
+            showToast('Google sign-in was cancelled.');
+            return;
+        }
+
+        showToast('Verifying Google credentials with backend... ⏳');
+
+        try {
+            const res = await fetch('/api/subscription/google-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: response.credential })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                AccountManager.addAccount(data.email);
+                showToast(data.message || 'Verified with Google! ✨');
+
+                setTimeout(() => {
+                    if (data.is_new) {
+                        window.location.href = `/success?email=${encodeURIComponent(data.email)}&google=true`;
+                    } else {
+                        window.location.href = `/preferences?email=${encodeURIComponent(data.email)}&google=true`;
+                    }
+                }, 700);
+            } else {
+                showToast(data.detail || 'Google authentication failed.');
+            }
+        } catch (err) {
+            showToast('Network error during Google sign-in.');
+        }
+    },
+
+    showSetupNotice() {
+        let modal = document.getElementById('google-setup-notice-modal');
+        if (!modal) {
+            const html = `
+            <div id="google-setup-notice-modal" class="account-modal-backdrop" onclick="if(event.target.id==='google-setup-notice-modal') this.style.display='none'">
+                <div class="account-modal-card" style="max-width: 480px;">
+                    <div class="account-modal-header">
+                        <div class="account-modal-title">
+                            <svg class="google-icon" viewBox="0 0 24 24" width="22" height="22" style="vertical-align: middle;">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                            </svg>
+                            <span>Google OAuth Configuration</span>
+                        </div>
+                        <button type="button" class="account-modal-close" onclick="document.getElementById('google-setup-notice-modal').style.display='none'">✕</button>
+                    </div>
+                    <div class="account-modal-body" style="padding: 22px 24px;">
+                        <p style="font-size: 15px; color: var(--text-primary); margin-bottom: 14px; line-height: 1.5;">
+                            <strong>Google Client ID Required:</strong>
+                        </p>
+                        <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                            To authenticate real Google accounts, configure your Google OAuth Client ID in your <code>.env</code> file:
+                        </p>
+                        <div style="background: #f1f5f9; padding: 12px 14px; border-radius: 8px; font-family: monospace; font-size: 13px; color: #0f172a; word-break: break-all; margin-bottom: 16px; border: 1px solid #e2e8f0;">
+                            GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
+                            📌 You can generate this for free in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--color-primary); text-decoration: underline;">Google Cloud Console → APIs & Services → Credentials</a>.
+                        </p>
+                        <button type="button" class="btn-primary" onclick="document.getElementById('google-setup-notice-modal').style.display='none'" style="width: 100%;">
+                            <span>Got it</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', html);
+            modal = document.getElementById('google-setup-notice-modal');
+        }
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+    }
+};

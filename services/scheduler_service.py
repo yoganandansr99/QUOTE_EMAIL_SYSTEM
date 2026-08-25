@@ -116,7 +116,7 @@ class DailyJobService:
                     sent_count += 1
                 else:
                     # Log failure in email_logs only (not delivery_history)
-                    error_msg = "SMTP transport rejected or failed to dispatch email."
+                    error_msg = "Resend API delivery rejected or failed to dispatch email."
                     await self._log_email(
                         user_id=user_id,
                         email=user_email,

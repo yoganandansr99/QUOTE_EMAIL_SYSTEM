@@ -26,6 +26,9 @@ class User(BaseModel):
     email: EmailStr
     status: UserStatus = UserStatus.PENDING
     interests: List[InterestCategory] = []
+    auth_provider: Optional[str] = "email"
+    name: Optional[str] = None
+    picture: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     unsubscribed_at: Optional[datetime] = None
