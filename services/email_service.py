@@ -15,6 +15,7 @@ class EmailService:
         self.email_from = settings.email_from
         self.email_from_name = settings.email_from_name
         self.api_url = "https://api.resend.com/emails"
+        self.last_error: str = ""
     
     async def send_otp_email(self, to_email: str, otp: str) -> bool:
         """Send OTP verification email."""
@@ -176,9 +177,11 @@ class EmailService:
         Send an email via the Resend HTTPS API.
         Does not use SMTP/smtplib so it works reliably on Render Free tiers and cloud platforms.
         """
+        self.last_error = ""
         api_key = self.api_key or settings.resend_api_key
         if not api_key:
-            print("Resend Error: RESEND_API_KEY is not configured in environment.")
+            self.last_error = "RESEND_API_KEY is not configured in environment."
+            print(f"Resend Error: {self.last_error}")
             return False
 
         from_addr = self.email_from or settings.email_from or "onboarding@resend.dev"
@@ -213,10 +216,12 @@ class EmailService:
                         error_msg = err_json.get("message") or err_json.get("name") or error_msg
                     except Exception:
                         pass
-                    print(f"Resend API Error (HTTP {response.status_code}): {error_msg}")
+                    self.last_error = f"Resend API Error (HTTP {response.status_code}): {error_msg}"
+                    print(self.last_error)
                     return False
         except Exception as e:
-            print(f"Resend HTTP dispatch failed: {str(e)}")
+            self.last_error = f"Resend HTTP dispatch failed: {str(e)}"
+            print(self.last_error)
             return False
 
 
