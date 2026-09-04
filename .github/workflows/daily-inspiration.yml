@@ -18,12 +18,10 @@ jobs:
     steps:
       - name: Send Trigger Request to FastAPI Server
         env:
-          APP_URL: ${{ secrets.APP_URL }}
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL || 'https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          # Use configured APP_URL or default fallback
-          TARGET_URL="${APP_URL:-https://daily-inspiration-app.onrender.com}"
-          ENDPOINT="${TARGET_URL%/}/api/jobs/send-daily-inspiration"
+          ENDPOINT="${APP_URL%/}/api/jobs/send-daily-inspiration"
           
           echo "Triggering daily inspiration job at $ENDPOINT..."
           

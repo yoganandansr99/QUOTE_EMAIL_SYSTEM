@@ -460,8 +460,11 @@ window.GoogleAuthManager = {
     clientId: '',
     isConfigured: false,
     isInitialized: false,
+    isSigningIn: false,
+    safetyTimer: null,
 
     async init() {
+        if (this.isInitialized) return;
         try {
             const res = await fetch('/api/subscription/google-client-id');
             if (res.ok) {
@@ -477,6 +480,8 @@ window.GoogleAuthManager = {
     },
 
     setupGIS() {
+        if (this.isInitialized) return;
+
         if (typeof google !== 'undefined' && google.accounts && google.accounts.id && this.clientId) {
             try {
                 google.accounts.id.initialize({
@@ -487,7 +492,24 @@ window.GoogleAuthManager = {
                 });
                 this.isInitialized = true;
 
-                // Render hidden GIS standard button for programmatic click trigger
+                // Ensure global hidden GIS render target exists in DOM
+                let globalTarget = document.getElementById('google-hidden-btn-global');
+                if (!globalTarget) {
+                    globalTarget = document.createElement('div');
+                    globalTarget.id = 'google-hidden-btn-global';
+                    globalTarget.className = 'google-hidden-btn';
+                    globalTarget.style.cssText = 'position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;top:-9999px;left:-9999px;';
+                    document.body.appendChild(globalTarget);
+                }
+
+                // Render standard Google button for programmatic click trigger
+                google.accounts.id.renderButton(globalTarget, {
+                    type: 'standard',
+                    theme: 'outline',
+                    size: 'large'
+                });
+
+                // Also render to hero button if present on index page
                 const heroBtn = document.getElementById('google-hidden-btn-hero');
                 if (heroBtn) {
                     google.accounts.id.renderButton(heroBtn, {
@@ -502,43 +524,112 @@ window.GoogleAuthManager = {
         } else if (!this.isInitialized && this.clientId) {
             // Check again if GIS script loads slightly after DOMContentLoaded
             setTimeout(() => {
-                if (typeof google !== 'undefined' && google.accounts && this.clientId) {
+                if (typeof google !== 'undefined' && google.accounts && this.clientId && !this.isInitialized) {
                     this.setupGIS();
                 }
-            }, 1000);
+            }, 800);
         }
     },
 
+    setLoading(loading) {
+        this.isSigningIn = loading;
+        const buttons = document.querySelectorAll('.btn-google-auth');
+        buttons.forEach(btn => {
+            if (loading) {
+                btn.disabled = true;
+                btn.style.opacity = '0.65';
+                btn.style.pointerEvents = 'none';
+                btn.setAttribute('aria-busy', 'true');
+                const textSpan = btn.querySelector('.btn-google-text') || btn.querySelector('span:not(.google-badge-quick)');
+                if (textSpan) {
+                    btn.dataset.origText = textSpan.textContent;
+                    textSpan.textContent = 'Connecting...';
+                }
+            } else {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                btn.removeAttribute('aria-busy');
+                const textSpan = btn.querySelector('.btn-google-text') || btn.querySelector('span:not(.google-badge-quick)');
+                if (textSpan && btn.dataset.origText) {
+                    textSpan.textContent = btn.dataset.origText;
+                }
+            }
+        });
+    },
+
+    resetState() {
+        if (this.safetyTimer) {
+            clearTimeout(this.safetyTimer);
+            this.safetyTimer = null;
+        }
+        this.setLoading(false);
+    },
+
     signIn() {
+        // 1. Guard against multiple simultaneous Google sign-in requests
+        if (this.isSigningIn) {
+            console.warn('GoogleAuthManager: Sign-in already in progress');
+            return;
+        }
+
+        // 2. Check configuration
         if (!this.isConfigured || !this.clientId) {
             this.showSetupNotice();
             return;
         }
 
-        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-            if (!this.isInitialized) {
-                this.setupGIS();
-            }
+        // 3. Ensure GIS is available
+        if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+            showToast('Loading Google Services, please try again in a moment...');
+            return;
+        }
 
-            try {
-                // Trigger GIS One-Tap prompt or click the rendered Google button
+        if (!this.isInitialized) {
+            this.setupGIS();
+        }
+
+        // 4. Lock sign-in and set loading state on buttons
+        this.setLoading(true);
+
+        // Safety fallback timer: re-enable buttons after 20s if popup closed without event
+        this.safetyTimer = setTimeout(() => {
+            if (this.isSigningIn) {
+                console.warn('GoogleAuthManager: Sign-in safety timeout reached.');
+                this.resetState();
+            }
+        }, 20000);
+
+        // 5. Trigger Google OAuth via rendered GIS button (cleanest single-request path)
+        try {
+            const btn = document.querySelector('#google-hidden-btn-global div[role="button"]')
+                     || document.querySelector('#google-hidden-btn-hero div[role="button"]')
+                     || document.querySelector('.google-hidden-btn div[role="button"]');
+            
+            if (btn) {
+                btn.click();
+            } else {
                 google.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        const btn = document.querySelector('#google-hidden-btn-hero div[role="button"]');
-                        if (btn) btn.click();
+                    if (notification.isDismissedMoment() || notification.isSkippedMoment() || notification.isNotDisplayed()) {
+                        this.resetState();
                     }
                 });
-            } catch (e) {
-                const btn = document.querySelector('#google-hidden-btn-hero div[role="button"]');
-                if (btn) btn.click();
             }
-        } else {
-            showToast('Loading Google Services, please try again in a moment...');
+        } catch (e) {
+            console.error('GoogleAuthManager: Error triggering sign-in', e);
+            this.resetState();
+            showToast('Could not open Google Sign-In. Please try again.');
         }
     },
 
     async handleCredentialResponse(response) {
+        if (this.safetyTimer) {
+            clearTimeout(this.safetyTimer);
+            this.safetyTimer = null;
+        }
+
         if (!response || !response.credential) {
+            this.resetState();
             showToast('Google sign-in was cancelled.');
             return;
         }
@@ -566,9 +657,11 @@ window.GoogleAuthManager = {
                     }
                 }, 700);
             } else {
+                this.resetState();
                 showToast(data.detail || 'Google authentication failed.');
             }
         } catch (err) {
+            this.resetState();
             showToast('Network error during Google sign-in.');
         }
     },

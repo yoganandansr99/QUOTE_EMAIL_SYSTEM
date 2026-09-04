@@ -24,10 +24,23 @@ class EmailService:
         self.email_from = settings.email_from
         self.email_from_name = settings.email_from_name
         self.last_error: str = ""
+
+    @property
+    def base_url(self) -> str:
+        """Resolve centralized application base URL for email hyperlinks."""
+        raw_url = (
+            getattr(settings, "app_base_url", None)
+            or getattr(settings, "base_url", None)
+            or os.getenv("APP_BASE_URL")
+            or os.getenv("BASE_URL")
+            or "http://localhost:8000"
+        )
+        return str(raw_url).strip().rstrip("/")
     
     async def send_otp_email(self, to_email: str, otp: str) -> bool:
         """Send OTP verification email."""
         subject = "Your Daily Inspiration Verification Code"
+        base_url = self.base_url
         body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -40,6 +53,9 @@ class EmailService:
                 <p style="color: #666;">Your verification code is:</p>
                 <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
                     <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px;">{otp}</span>
+                </div>
+                <div style="text-align: center; margin: 25px 0;">
+                    <a href="{base_url}/verify?email={to_email}" style="display: inline-block; padding: 12px 28px; background: #667eea; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">Enter Code on Website →</a>
                 </div>
                 <p style="color: #999; font-size: 14px;">This code will expire in {settings.otp_expiry_minutes} minutes.</p>
                 <p style="color: #999; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
@@ -62,7 +78,7 @@ class EmailService:
     ) -> bool:
         """Send daily inspiration email."""
         subject = f"🌟 Your Daily Inspiration - {datetime.now().strftime('%B %d, %Y')}"
-        base_url = getattr(settings, 'base_url', 'http://localhost:8000')
+        base_url = self.base_url
         
         # Ensure image_url is always a valid HTTP/HTTPS image URL with fallback
         safe_image_url = str(image_url).strip() if image_url and str(image_url).strip() not in ("None", "null", "") else ""
@@ -117,6 +133,7 @@ class EmailService:
                     You're receiving this email because you subscribed to Daily Inspiration.
                     <br><br>
                     <a href="{base_url}/unsubscribe?email={to_email}" style="color: #667eea; text-decoration: none;">Unsubscribe</a> | 
+                    <a href="{base_url}/preferences?email={to_email}" style="color: #667eea; text-decoration: none;">Manage Preferences</a> | 
                     <a href="{base_url}/feedback?email={to_email}" style="color: #667eea; text-decoration: none;">Give Feedback & Thoughts</a>
                 </p>
             </div>

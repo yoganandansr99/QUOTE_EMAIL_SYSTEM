@@ -184,27 +184,24 @@ pytest -v
 
 ---
 
-## 🚀 4. Deploying to Render
+## 🚀 4. Deploying to Azure App Service (Linux)
 
-1. **Push your code to a GitHub repository.**
-2. **Log into [Render Dashboard](https://dashboard.render.com/)** and click **New +** -> **Web Service**.
-3. **Connect your GitHub repository.**
-4. **Configure the Web Service:**
-   - **Name:** `daily-inspiration-app`
-   - **Environment:** `Python`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. **Add Environment Variables in Render:**
-   Under the **Environment** tab on Render, add:
-   - `MONGODB_URL`
-   - `MONGODB_DB_NAME`
+1. **Deploy your app to Azure App Service Linux** (Python 3.11).
+2. **Azure Startup Command:**
+   ```bash
+   gunicorn --bind=0.0.0.0:8000 --forwarded-allow-ips='*' -w 2 -k uvicorn.workers.UvicornWorker app.main:app
+   ```
+3. **Configure Environment Variables in Azure Portal:**
+   Under **Settings** -> **Environment variables**, configure:
+   - `APP_BASE_URL`: `https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net`
+   - `MONGODB_URL`: Your MongoDB Atlas connection string
+   - `MONGODB_DB_NAME`: `daily_inspiration`
    - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`, `SMTP_USE_SSL`
    - `EMAIL_FROM`, `EMAIL_FROM_NAME`
-   - `GOOGLE_CLIENT_ID` (Optional)
+   - `GOOGLE_CLIENT_ID` (For Google OAuth)
    - `PEXELS_API_KEY`
    - `SECRET_KEY`
    - `CRON_SECRET`
-6. Click **Deploy Web Service**.
 
 ---
 
@@ -214,8 +211,8 @@ To allow GitHub Actions to trigger your deployed FastAPI app:
 
 1. Go to your **GitHub Repository** -> **Settings** -> **Secrets and variables** -> **Actions**.
 2. Click **New repository secret** and add:
-   - **`APP_URL`**: Your Render URL (e.g. `https://daily-inspiration-app.onrender.com`)
-   - **`CRON_SECRET`**: The exact matching `CRON_SECRET` string configured in your Render environment variables.
+   - **`APP_URL`** (or **`APP_BASE_URL`**): `https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net`
+   - **`CRON_SECRET`**: The matching `CRON_SECRET` string configured in your Azure environment variables.
 
 ---
 
@@ -243,8 +240,7 @@ You can trigger the daily job in two ways:
 
 #### Option B: Trigger via `curl`
 ```bash
-# Replace with your app URL and secret:
-curl -X POST "https://daily-inspiration-app.onrender.com/api/jobs/send-daily-inspiration" \
+curl -X POST "https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net/api/jobs/send-daily-inspiration" \
   -H "Content-Type: application/json" \
   -H "X-Cron-Secret: your-cron-secret-here"
 ```

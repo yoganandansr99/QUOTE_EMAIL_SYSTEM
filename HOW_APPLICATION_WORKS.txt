@@ -428,19 +428,20 @@ The project includes a comprehensive suite of unit tests covering:
 Execute test suite:
 `pytest -v` (All tests will pass).
 
-GitHub Actions & Render Deployment:
------------------------------------
-1. Deploy code to Render as a Web Service.
-2. In Render Dashboard -> Environment Variables, add:
+GitHub Actions & Azure App Service Deployment:
+----------------------------------------------
+1. Deploy code to Azure App Service (Linux, Python 3.11).
+2. In Azure Portal -> App Service -> Environment Variables, add:
+   `APP_BASE_URL` = `https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net`
    `MONGODB_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `EMAIL_FROM_NAME`,
-   `PEXELS_API_KEY`, `SECRET_KEY`, `CRON_SECRET`.
+   `GOOGLE_CLIENT_ID`, `PEXELS_API_KEY`, `SECRET_KEY`, `CRON_SECRET`.
 3. In GitHub Repository -> Settings -> Secrets and variables -> Actions, add:
-   - `APP_URL`     : Your Render app URL (e.g. `https://daily-inspiration-app.onrender.com`)
-   - `CRON_SECRET` : The exact secret configured on Render.
+   - `APP_URL` / `APP_BASE_URL`: `https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net`
+   - `CRON_SECRET` : The matching secret configured on Azure.
 4. Test manual trigger from GitHub Actions -> "Daily Inspiration Dispatch" -> "Run workflow".
 5. Test via curl:
    ```bash
-   curl -X POST "https://your-app.onrender.com/api/jobs/send-daily-inspiration" \
+   curl -X POST "https://inspire-dev-createdby-yoganandansr-fzd6djamegbkgnaa.centralindia-01.azurewebsites.net/api/jobs/send-daily-inspiration" \
      -H "Content-Type: application/json" \
      -H "X-Cron-Secret: your-cron-secret"
    ```
