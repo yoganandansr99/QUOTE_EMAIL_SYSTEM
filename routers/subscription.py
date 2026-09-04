@@ -35,7 +35,7 @@ def is_valid_email(email: str) -> bool:
 
 
 async def send_welcome_email(db: AsyncIOMotorDatabase, email: str):
-    """Send welcome email with first inspirational quote to new/verified user."""
+    """Send welcome email with first inspirational quote and image to new/verified user."""
     try:
         from services.quote_service import QuoteService
         from services.image_service import ImageService
@@ -44,40 +44,68 @@ async def send_welcome_email(db: AsyncIOMotorDatabase, email: str):
         if not user:
             return
         
+        user_id = str(user["_id"])
         quote_service = QuoteService(db)
         image_service = ImageService()
         
+        # Ensure quotes exist in MongoDB
+        await quote_service.ensure_minimum_quotes(minimum=50)
+        
         # Get a welcome quote
         quote = await quote_service.get_eligible_quote_for_user(
-            user_id=str(user["_id"]),
-            interests=[]
+            user_id=user_id,
+            interests=user.get("interests", [])
         )
         
         if quote:
-            # Get image for quote
-            if not quote.get("image_url"):
+            quote_id = quote.get("id")
+            image_url = quote.get("image_url")
+            
+            # Fetch & cache image if not already cached
+            if not image_url or not str(image_url).startswith("http"):
                 image_data = await image_service.get_image_for_quote(
                     quote=quote.get("quote"),
                     category=quote.get("category"),
                     tags=quote.get("tags")
                 )
-                quote["image_url"] = image_data.get("url")
+                image_url = image_data.get("url")
+                quote["image_url"] = image_url
                 quote["image_source"] = image_data.get("source")
                 quote["image_photographer"] = image_data.get("photographer")
+                
+                if quote_id:
+                    await quote_service.update_quote_image(quote_id, image_data)
             
             # Send welcome email
             person_story = quote.get("person_story") or f"{quote.get('author')} has inspired countless individuals through their wisdom and achievements."
             daily_action = quote.get("daily_action") or "Take one small step today toward a goal you've been postponing."
             
-            await email_service.send_daily_inspiration_email(
+            email_sent = await email_service.send_daily_inspiration_email(
                 to_email=email,
                 quote=quote.get("quote"),
                 author=quote.get("author"),
-                image_url=quote.get("image_url"),
+                image_url=image_url,
                 person_story=person_story,
                 daily_action=daily_action,
-                user_id=str(user["_id"])
+                user_id=user_id
             )
+            
+            if email_sent and quote_id:
+                # Save delivery history record
+                await db.delivery_history.insert_one({
+                    "user_id": user_id,
+                    "quote_id": quote_id,
+                    "sent_at": datetime.utcnow(),
+                    "status": "sent"
+                })
+                # Log to email_logs
+                await db.email_logs.insert_one({
+                    "user_id": user_id,
+                    "email": email,
+                    "subject": f"🌟 Your Daily Inspiration - {datetime.utcnow().strftime('%B %d, %Y')}",
+                    "status": "sent",
+                    "sent_at": datetime.utcnow()
+                })
     except Exception as e:
         print(f"Error sending welcome email: {str(e)}")
         # Don't fail the verification/auth if welcome email fails

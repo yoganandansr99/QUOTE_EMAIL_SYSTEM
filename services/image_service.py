@@ -62,12 +62,21 @@ class ImageService:
                     
                     if photos:
                         photo = photos[0]
-                        return {
-                            "url": photo.get("src", {}).get("large", photo.get("src", {}).get("original")),
-                            "source": "Pexels",
-                            "photographer": photo.get("photographer", "Unknown"),
-                            "alt": photo.get("alt", query)
-                        }
+                        src = photo.get("src", {}) if isinstance(photo.get("src"), dict) else {}
+                        img_url = (
+                            src.get("large")
+                            or src.get("landscape")
+                            or src.get("large2x")
+                            or src.get("medium")
+                            or src.get("original")
+                        )
+                        if img_url:
+                            return {
+                                "url": img_url,
+                                "source": "Pexels",
+                                "photographer": photo.get("photographer", "Unknown"),
+                                "alt": photo.get("alt", query)
+                            }
                 
                 return self._get_fallback_image()
                 

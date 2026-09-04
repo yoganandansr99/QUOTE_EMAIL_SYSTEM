@@ -28,9 +28,9 @@ flowchart TD
     JOB -->|Exclude 365-day sent quotes| DB
     JOB -->|Select eligible quote| DB
     JOB -->|Fetch / cached image| PEXELS[Pexels API]
-    JOB -->|Send customized HTML email via HTTPS| RESEND[Resend Email API]
-    RESEND -->|On Success| DH[(Save delivery_history & email_logs)]
-    RESEND -->|On Failure| EL[(Log to email_logs only)]
+    JOB -->|Send customized HTML email via SMTP| SMTP[SMTP Mail Server]
+    SMTP -->|On Success| DH[(Save delivery_history & email_logs)]
+    SMTP -->|On Failure| EL[(Log to email_logs only)]
 ```
 
 ---
@@ -69,7 +69,7 @@ Fast_pro/
 ├── services/
 │   ├── quote_service.py            # Dataset import, categorization, 365-day selection
 │   ├── scheduler_service.py        # Daily inspiration dispatch engine
-│   ├── email_service.py            # Resend HTTPS API transport & Jinja2 email builder
+│   ├── email_service.py            # SMTP protocol transport & Jinja2 email builder
 │   ├── image_service.py            # Pexels image fetcher & local fallback
 │   ├── otp_service.py              # Secure OTP generation & SHA-256 verification
 │   └── __init__.py
@@ -98,10 +98,15 @@ Configure the following variables in `.env`:
 MONGODB_URL=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
 MONGODB_DB_NAME=daily_inspiration
 
-# 2. Email Configuration (Resend HTTPS API - No SMTP ports blocked on Render)
-# Sign up and get your API key at: https://resend.com/api-keys
-RESEND_API_KEY=re_your_resend_api_key_here
-EMAIL_FROM=onboarding@resend.dev
+# 2. Email Configuration (SMTP Protocol)
+# Example for Gmail: Host=smtp.gmail.com, Port=587, User=your_email@gmail.com, Password=your_app_password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_smtp_app_password
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
+EMAIL_FROM=your_email@gmail.com
 EMAIL_FROM_NAME=Daily Inspiration
 
 # 3. Google OAuth Configuration (Optional, for Continue with Google)
@@ -110,7 +115,7 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 # 4. Pexels API (Free at https://www.pexels.com/api/)
 PEXELS_API_KEY=your-pexels-api-key
 
-# 4. Application Security & Job Protection
+# 5. Application Security & Job Protection
 SECRET_KEY=your-random-secret-key-change-in-production
 CRON_SECRET=your-secure-cron-secret-for-github-actions
 OTP_EXPIRY_MINUTES=5
@@ -193,7 +198,7 @@ pytest -v
    Under the **Environment** tab on Render, add:
    - `MONGODB_URL`
    - `MONGODB_DB_NAME`
-   - `RESEND_API_KEY`
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`, `SMTP_USE_SSL`
    - `EMAIL_FROM`, `EMAIL_FROM_NAME`
    - `GOOGLE_CLIENT_ID` (Optional)
    - `PEXELS_API_KEY`

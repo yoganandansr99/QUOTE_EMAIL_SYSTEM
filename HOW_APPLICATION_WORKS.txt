@@ -400,8 +400,13 @@ Local Setup:
    `pip install -r requirements.txt`
 4. Configure `.env`:
    - `MONGODB_URL=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority`
-   - `RESEND_API_KEY=re_your-api-key-here`
-   - `EMAIL_FROM=onboarding@resend.dev`
+   - `SMTP_HOST=smtp.gmail.com`
+   - `SMTP_PORT=587`
+   - `SMTP_USER=your_email@gmail.com`
+   - `SMTP_PASSWORD=your_app_password`
+   - `SMTP_USE_TLS=true`
+   - `SMTP_USE_SSL=false`
+   - `EMAIL_FROM=your_email@gmail.com`
    - `CRON_SECRET=your-secure-secret-here`
 5. Seed Quote Dataset (405 quotes):
    `python scripts/import_quotes.py`
@@ -415,7 +420,7 @@ The project includes a comprehensive suite of unit tests covering:
 - 9-category rule and keyword categorization
 - 365-day quote exclusion per user
 - Safe delivery history logging (success vs failure)
-- Resend HTTPS email dispatch & error handling
+- SMTP email dispatch & error handling
 - OTP security and rate limiting
 - CRON_SECRET 401 unauthorized protection
 - GitHub Actions workflow syntax validation
@@ -427,7 +432,7 @@ GitHub Actions & Render Deployment:
 -----------------------------------
 1. Deploy code to Render as a Web Service.
 2. In Render Dashboard -> Environment Variables, add:
-   `MONGODB_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_NAME`,
+   `MONGODB_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `EMAIL_FROM_NAME`,
    `PEXELS_API_KEY`, `SECRET_KEY`, `CRON_SECRET`.
 3. In GitHub Repository -> Settings -> Secrets and variables -> Actions, add:
    - `APP_URL`     : Your Render app URL (e.g. `https://daily-inspiration-app.onrender.com`)

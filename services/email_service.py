@@ -1,6 +1,10 @@
 from typing import Optional, List
 from datetime import datetime
-import httpx
+import asyncio
+import email.utils
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
 import sys
 import os
 
@@ -11,10 +15,14 @@ from core.config import settings
 
 class EmailService:
     def __init__(self):
-        self.api_key = settings.resend_api_key
+        self.smtp_host = settings.smtp_host
+        self.smtp_port = settings.smtp_port
+        self.smtp_user = settings.smtp_user
+        self.smtp_password = settings.smtp_password
+        self.smtp_use_tls = settings.smtp_use_tls
+        self.smtp_use_ssl = settings.smtp_use_ssl
         self.email_from = settings.email_from
         self.email_from_name = settings.email_from_name
-        self.api_url = "https://api.resend.com/emails"
         self.last_error: str = ""
     
     async def send_otp_email(self, to_email: str, otp: str) -> bool:
@@ -56,6 +64,11 @@ class EmailService:
         subject = f"🌟 Your Daily Inspiration - {datetime.now().strftime('%B %d, %Y')}"
         base_url = getattr(settings, 'base_url', 'http://localhost:8000')
         
+        # Ensure image_url is always a valid HTTP/HTTPS image URL with fallback
+        safe_image_url = str(image_url).strip() if image_url and str(image_url).strip() not in ("None", "null", "") else ""
+        if not safe_image_url or not safe_image_url.startswith("http"):
+            safe_image_url = "https://images.pexels.com/photos/1114690/pexels-photo-1114690.jpeg?auto=compress&cs=tinysrgb&w=800"
+        
         body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
@@ -73,7 +86,7 @@ class EmailService:
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <img src="{image_url}" alt="Inspirational Image" style="max-width: 100%; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <img src="{safe_image_url}" alt="Inspirational Image" width="540" style="width: 100%; max-width: 540px; height: auto; display: block; margin: 0 auto; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 0;" />
                 </div>
                 
                 <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #667eea;">
@@ -172,57 +185,110 @@ class EmailService:
 
         return await self._send_email(admin_email, subject, body)
     
-    async def _send_email(self, to_email: str, subject: str, body: str) -> bool:
+    def _send_smtp_sync(self, to_email: str, subject: str, body: str) -> bool:
         """
-        Send an email via the Resend HTTPS API.
-        Does not use SMTP/smtplib so it works reliably on Render Free tiers and cloud platforms.
+        Synchronous helper to dispatch an email via standard SMTP protocol.
+        Runs in an async worker thread to preserve non-blocking performance.
         """
         self.last_error = ""
-        api_key = self.api_key or settings.resend_api_key
-        if not api_key:
-            self.last_error = "RESEND_API_KEY is not configured in environment."
-            print(f"Resend Error: {self.last_error}")
+        host = self.smtp_host or settings.smtp_host
+        port = self.smtp_port or settings.smtp_port
+        user = self.smtp_user or settings.smtp_user
+        password = self.smtp_password or settings.smtp_password
+        use_tls = self.smtp_use_tls if self.smtp_use_tls is not None else settings.smtp_use_tls
+        use_ssl = self.smtp_use_ssl if self.smtp_use_ssl is not None else settings.smtp_use_ssl
+        # Resolve from_addr and from_name intelligently
+        raw_from = (self.email_from or settings.email_from or os.getenv("EMAIL_FROM", "")).strip()
+        raw_name = (self.email_from_name or settings.email_from_name or os.getenv("EMAIL_FROM_NAME", "")).strip()
+
+        if raw_from and "@" in raw_from:
+            from_addr = raw_from
+            from_name = raw_name or "Daily Inspiration"
+        elif raw_from and "@" not in raw_from:
+            # If a display name was passed into EMAIL_FROM instead of an email address
+            from_name = raw_from
+            from_addr = user or "noreply@dailyinspiration.com"
+        else:
+            from_addr = user or "noreply@dailyinspiration.com"
+            from_name = raw_name or "Daily Inspiration"
+
+        if not host:
+            self.last_error = "SMTP_HOST is not configured in environment."
+            print(f"SMTP Error: {self.last_error}")
             return False
 
-        from_addr = self.email_from or settings.email_from or "onboarding@resend.dev"
-        from_name = self.email_from_name or settings.email_from_name or "Daily Inspiration"
-        from_header = f"{from_name} <{from_addr}>" if from_name and "@" not in from_name else from_addr
+        if not to_email:
+            self.last_error = "Recipient email address (to_email) is missing or empty."
+            print(f"SMTP Error: {self.last_error}")
+            return False
 
-        headers = {
-            "Authorization": f"Bearer {api_key.strip()}",
-            "Content-Type": "application/json"
-        }
+        # Construct MIME message
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = email.utils.formataddr((from_name, from_addr)) if from_name else from_addr
+        msg["To"] = to_email
+        msg["Date"] = email.utils.formatdate(localtime=True)
+        domain = host if ("." in host and not host.replace(".", "").isdigit()) else "localhost"
+        msg["Message-ID"] = email.utils.make_msgid(domain=domain)
 
-        payload = {
-            "from": from_header,
-            "to": [to_email],
-            "subject": subject,
-            "html": body
-        }
+        # Attach HTML payload
+        html_part = MIMEText(body, "html", "utf-8")
+        msg.attach(html_part)
 
+        server = None
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.post(self.api_url, headers=headers, json=payload)
+            if use_ssl or port == 465:
+                server = smtplib.SMTP_SSL(host, port, timeout=15.0)
+            else:
+                server = smtplib.SMTP(host, port, timeout=15.0)
+                server.ehlo()
+                if use_tls:
+                    server.starttls()
+                    server.ehlo()
 
-                if response.status_code in [200, 201]:
-                    data = response.json()
-                    if data and "id" in data:
-                        return True
-                    return True
-                else:
-                    error_msg = response.text
-                    try:
-                        err_json = response.json()
-                        error_msg = err_json.get("message") or err_json.get("name") or error_msg
-                    except Exception:
-                        pass
-                    self.last_error = f"Resend API Error (HTTP {response.status_code}): {error_msg}"
-                    print(self.last_error)
-                    return False
-        except Exception as e:
-            self.last_error = f"Resend HTTP dispatch failed: {str(e)}"
-            print(self.last_error)
+            if user and password:
+                server.login(user, password)
+
+            server.sendmail(from_addr, [to_email], msg.as_string())
+            return True
+
+        except smtplib.SMTPAuthenticationError as e:
+            error_detail = e.smtp_error.decode("utf-8", errors="ignore") if isinstance(e.smtp_error, bytes) else str(e)
+            self.last_error = f"SMTP Authentication failed: {error_detail}"
+            print(f"SMTP Error: {self.last_error}")
             return False
+        except smtplib.SMTPConnectError as e:
+            self.last_error = f"SMTP Connection failed to {host}:{port}: {str(e)}"
+            print(f"SMTP Error: {self.last_error}")
+            return False
+        except smtplib.SMTPRecipientsRefused as e:
+            self.last_error = f"SMTP Recipient refused for {to_email}: {str(e)}"
+            print(f"SMTP Error: {self.last_error}")
+            return False
+        except smtplib.SMTPServerDisconnected as e:
+            self.last_error = f"SMTP Server unexpectedly disconnected from {host}:{port}: {str(e)}"
+            print(f"SMTP Error: {self.last_error}")
+            return False
+        except smtplib.SMTPException as e:
+            self.last_error = f"SMTP Protocol Error: {str(e)}"
+            print(f"SMTP Error: {self.last_error}")
+            return False
+        except Exception as e:
+            self.last_error = f"SMTP dispatch failed: {str(e)}"
+            print(f"SMTP Error: {self.last_error}")
+            return False
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+
+    async def _send_email(self, to_email: str, subject: str, body: str) -> bool:
+        """
+        Send an email via SMTP protocol asynchronously without blocking the event loop.
+        """
+        return await asyncio.to_thread(self._send_smtp_sync, to_email, subject, body)
 
 
 email_service = EmailService()

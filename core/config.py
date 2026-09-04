@@ -10,9 +10,14 @@ class Settings(BaseSettings):
     mongodb_url: str = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
     mongodb_db_name: str = os.getenv("MONGODB_DB_NAME", "daily_inspiration")
     
-    # Email Service (Resend HTTPS API)
-    resend_api_key: str = os.getenv("RESEND_API_KEY", "")
-    email_from: str = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
+    # Email Service (SMTP Protocol)
+    smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str = os.getenv("SMTP_USER", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_use_tls: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+    smtp_use_ssl: bool = os.getenv("SMTP_USE_SSL", "false").lower() in ("true", "1", "yes")
+    email_from: str = os.getenv("EMAIL_FROM", "")
     email_from_name: str = os.getenv("EMAIL_FROM_NAME", "Daily Inspiration")
     
     # External APIs & OAuth

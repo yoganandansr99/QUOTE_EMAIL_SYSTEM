@@ -1,0 +1,307 @@
+================================================================================
+                    DAILY INSPIRATION - PROJECT ARCHITECTURE & WORKFLOW
+================================================================================
+
+================================================================================
+1. EXECUTIVE OVERVIEW
+================================================================================
+Daily Inspiration is an automated, production-grade Python web application built 
+with FastAPI, MongoDB Atlas, Pexels API, and standard SMTP. It delivers personalized,
+visually rich daily inspirational emails to subscribers across 9 curated categories.
+
+Key System Highlights:
+• Zero-Failure Local Quote Dataset (400+ quotes) with SHA-256 deduplication.
+• 365-Day Uniqueness Guarantee: Subscribers never receive the same quote twice in a year.
+• Dual Authentication: Secure 6-digit OTP verification and "Continue with Google" OAuth.
+• High-Definition Imagery: Contextual images dynamically retrieved via Pexels API.
+• Asynchronous SMTP Delivery: Non-blocking email dispatch using Python smtplib.
+• Stateless Cloud Cron: Triggered reliably via GitHub Actions with X-Cron-Secret header.
+• One-Click Inbox Feedback: Subscribers can rate quotes directly from their inbox.
+
+
+================================================================================
+2. SYSTEM ARCHITECTURE & HIGH-LEVEL FLOW
+================================================================================
+
+                               +----------------------------+
+                               |       SUBSCRIBER UI        |
+                               |  (Web Browser / Frontend)  |
+                               +--------------+-------------+
+                                              |
+               +------------------------------+------------------------------+
+               |                                                             |
+    [1. OTP Subscription]                                      [2. Continue with Google]
+               |                                                             |
+               v                                                             v
+  +--------------------------+                                 +--------------------------+
+  | POST /api/subscription/  |                                 | POST /api/subscription/  |
+  | request-otp & verify-otp |                                 | google-auth              |
+  +------------+-------------+                                 +------------+-------------+
+               |                                                            |
+               +------------------------------+-----------------------------+
+                                              |
+                                              v
+                              +-------------------------------+
+                              |    FASTAPI BACKEND SERVER     |
+                              |       (Render / Local)        |
+                              +---------------+---------------+
+                                              |
+             +--------------------------------+--------------------------------+
+             |                                |                                |
+             v                                v                                v
+  +--------------------+           +--------------------+           +--------------------+
+  |   MONGODB ATLAS    |           |     PEXELS API     |           |  SMTP MAIL SERVER  |
+  | (Users, Quotes,    |           | (Image Retrieval   |           | (Gmail / SendGrid /|
+  |  Delivery History, |           |  & Caching)        |           |  Custom MailHost)  |
+  |  OTP, Feedback)    |           |                    |           |                    |
+  +--------------------+           +--------------------+           +--------------------+
+             ^                                                                 |
+             |                                                                 |
+             +------------------- Saves Delivery History ----------------------+
+                                  & Logs Delivery Results
+
+
+================================================================================
+3. SCHEDULED DAILY DISPATCH ARCHITECTURE (GITHUB ACTIONS)
+================================================================================
+
++-------------------------------------------------------------------------------+
+| GITHUB ACTIONS (Cloud Cron Trigger)                                           |
+| Workflow: .github/workflows/daily-inspiration.yml                             |
+| Triggers Daily at 8:00 AM UTC (or manually via workflow_dispatch)             |
++---------------------------------------+---------------------------------------+
+                                        |
+                                        | HTTPS POST /api/jobs/send-daily-inspiration
+                                        | Header: X-Cron-Secret: <CRON_SECRET>
+                                        v
++-------------------------------------------------------------------------------+
+| FASTAPI SERVER: DailyJobService                                               |
+| 1. Authenticates X-Cron-Secret header against environment settings.          |
+| 2. Queries all active VERIFIED subscribers from MongoDB.                      |
+| 3. Loops through each subscriber:                                             |
+|    a. Enforces 365-day rotation: Excludes quotes sent in the last 365 days.   |
+|    b. Filters by user category interests (Success, Discipline, Career, etc).  |
+|    c. Fetches & caches contextual photo from Pexels API.                      |
+|    d. Builds responsive HTML email template with interactive feedback links.  |
+|    e. Dispatches email asynchronously via SMTP server.                        |
+|    f. IF SUCCESSFUL: Inserts record into `delivery_history` collection.       |
+|    g. Logs attempt outcome into `email_logs` collection.                      |
+| 4. Returns structured JSON report (total, sent, failed, duration).            |
++-------------------------------------------------------------------------------+
+
+
+================================================================================
+4. CORE DIRECTORY STRUCTURE & RESPONSIBILITIES
+================================================================================
+
+Fast_pro/
+│
+├── app/
+│   ├── main.py                  -> FastAPI entry point, Jinja2 template routes, lifespan setup
+│   └── __init__.py
+│
+├── core/
+│   ├── config.py                -> Pydantic BaseSettings loading environment variables from .env
+│   ├── database.py              -> MongoDB Atlas connection client & unique index manager
+│   └── __init__.py
+│
+├── data/
+│   └── quotes.json              -> Curated dataset of 400+ quotes with stories & challenges
+│
+├── models/
+│   ├── user.py                  -> UserStatus enum & subscriber user schema
+│   ├── quote.py                 -> Quote schema & category definitions
+│   ├── otp.py                   -> OTP token record schema & request models
+│   ├── delivery.py              -> 365-day delivery tracking & email logs schema
+│   ├── feedback.py              -> User inbox & web feedback schema
+│   └── __init__.py
+│
+├── routers/
+│   ├── subscription.py          -> OTP verification, Google OAuth, status, and unsubscribe routes
+│   ├── preferences.py           -> Subscriber category customization endpoints
+│   ├── feedback.py              -> Feedback submission & admin notification routes
+│   ├── jobs.py                  -> Protected daily cron dispatch endpoints (X-Cron-Secret)
+│   └── __init__.py
+│
+├── scripts/
+│   └── import_quotes.py         -> Standalone CLI script to seed MongoDB from quotes.json
+│
+├── services/
+│   ├── quote_service.py         -> Quote deduplication, category rules, and 365-day algorithm
+│   ├── scheduler_service.py     -> Daily inspiration dispatch engine
+│   ├── email_service.py         -> SMTP protocol transport (TLS/SSL) & HTML email builder
+│   ├── image_service.py         -> Pexels API image fetcher with high-res fallback
+│   ├── otp_service.py           -> 6-digit OTP generator & SHA-256 validation
+│   └── __init__.py
+│
+├── static/
+│   ├── css/style.css            -> Modern dark/light glassmorphic stylesheet
+│   └── js/main.js               -> Client-side interactivity, Google Identity Services, OTP UI
+│
+├── templates/                   -> Jinja2 HTML templates
+│   ├── index.html               -> Main landing page with subscription & Google Sign-in modal
+│   ├── verify.html              -> 6-digit OTP verification interface with resend timer
+│   ├── preferences.html         -> Subscriber category selection center
+│   ├── sample_email.html        -> Live preview of the daily email design
+│   ├── how_it_works.html        -> Interactive guide explaining the service
+│   ├── about.html               -> Mission, categories, and system details
+│   └── success.html             -> Subscription confirmation page
+│
+├── tests/                       -> Comprehensive Pytest test suite (49 automated unit tests)
+│   ├── test_email_service.py    -> SMTP transport, STARTTLS/SSL, auth errors, template formatting
+│   ├── test_quote_service.py    -> Quote storage, SHA-256 hash deduplication, quote counting
+│   ├── test_quote_dataset.py    -> 365-day uniqueness filter & delivery history tests
+│   ├── test_subscription.py     -> OTP generation, rate limits, verification, Google Auth
+│   ├── test_feedback.py         -> Inbox feedback links & admin email notifications
+│   ├── test_jobs.py             -> Protected cron authentication (CRON_SECRET)
+│   └── conftest.py              -> Async database fixtures and test client setup
+│
+├── .github/workflows/
+│   └── daily-inspiration.yml    -> Scheduled daily GitHub Actions cron workflow
+│
+├── .env                         -> Local environment configuration
+├── .env.example                 -> Reference template for deployment
+├── requirements.txt             -> Application dependencies
+└── run.py                       -> Development server runner (Uvicorn with auto-reload)
+
+
+================================================================================
+5. DETAILED STEP-BY-STEP WORKFLOWS
+================================================================================
+
+--------------------------------------------------------------------------------
+FLOW A: Manual Email Subscription & OTP Verification
+--------------------------------------------------------------------------------
+1. User enters their email address on the landing page and clicks "Get Daily Inspiration".
+2. Frontend calls POST /api/subscription/request-otp.
+3. OTPService generates a cryptographically secure 6-digit numeric OTP.
+4. OTP record is hashed using SHA-256 and saved in MongoDB with a 5-minute TTL.
+5. EmailService sends an email with the 6-digit verification code.
+6. User enters the 6-digit code on /verify.
+7. Frontend calls POST /api/subscription/verify-otp.
+8. Upon successful validation, user's status is updated to "verified".
+9. An immediate Welcome Email containing their first quote and photo is dispatched.
+
+--------------------------------------------------------------------------------
+FLOW B: "Continue with Google" One-Click Subscription
+--------------------------------------------------------------------------------
+1. User clicks the "Continue with Google" button.
+2. Google Identity Services (GIS) displays the official Google sign-in prompt.
+3. User selects their Google account; Google returns a signed ID token (JWT).
+4. Frontend sends credential to POST /api/subscription/google-auth.
+5. Backend verifies the token with Google's tokeninfo endpoint, ensuring:
+   - Email is verified by Google.
+   - Token audience matches the configured GOOGLE_CLIENT_ID.
+6. User is immediately created or updated in MongoDB with status "verified".
+7. An immediate Welcome Email containing their first quote and photo is dispatched.
+
+--------------------------------------------------------------------------------
+FLOW C: 365-Day Quote Uniqueness Algorithm
+--------------------------------------------------------------------------------
+To ensure subscribers never get bored or receive repeated content:
+1. When selecting a quote for user U, QuoteService checks `delivery_history`.
+2. It aggregates all quote IDs delivered to user U where `sent_at >= now - 365 days`.
+3. It creates an exclusion filter: `_id: { $nin: [sent_quote_ids] }`.
+4. If user U has selected preferred categories (e.g. `career`, `leadership`), it filters:
+   `_id: { $nin: [sent_quote_ids] }, category: { $in: ['career', 'leadership'] }`.
+5. It randomly selects one eligible quote from the matching pool.
+6. If all quotes in preferred categories were exhausted in 365 days, it falls back to
+   any eligible quote across all categories.
+
+--------------------------------------------------------------------------------
+FLOW D: Interactive Inbox Feedback System
+--------------------------------------------------------------------------------
+Every email includes three one-click feedback buttons:
+• [Loved it]  -> GET /api/feedback?user_id=...&type=loved
+• [Useful]    -> GET /api/feedback?user_id=...&type=useful
+• [Not for me]-> GET /api/feedback?user_id=...&type=not_for_me
+
+1. When a user clicks any button in their email, FastAPI logs the rating to MongoDB.
+2. An automated notification is sent to the admin email (promotionp270@gmail.com).
+3. The user is redirected to a personalized feedback confirmation page where they
+   can optionally provide detailed written comments and star ratings.
+
+
+================================================================================
+6. DATABASE COLLECTIONS (MONGODB ATLAS)
+================================================================================
+
+1. `users`
+   Stores subscriber accounts, verification status, categories, and auth provider.
+   Key fields: email, status (pending/verified/unsubscribed), interests, auth_provider.
+
+2. `quotes`
+   Curated inspiration database with categories, tags, and cached imagery.
+   Key fields: quote, author, category, tags, quote_hash, image_url, person_story, daily_action.
+
+3. `delivery_history`
+   Tracks exact quote IDs delivered to each user with timestamps for 365-day rotation.
+   Key fields: user_id, quote_id, sent_at, status.
+
+4. `otp_records`
+   Ephemeral 6-digit OTP verification codes with attempt counts and rate limiting.
+   Key fields: email, otp_hash, attempts, expires_at, created_at.
+
+5. `feedback`
+   User sentiment ratings, star reviews, and comments submitted from emails.
+   Key fields: user_id, user_email, feedback_type, comment, rating, created_at.
+
+6. `email_logs`
+   Audit trail of all email dispatches, status (sent/failed), and error messages.
+   Key fields: user_id, email, subject, status, error, sent_at.
+
+
+================================================================================
+7. ENVIRONMENT CONFIGURATION REFERENCE (.env)
+================================================================================
+
+# MongoDB Atlas
+MONGODB_URL=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB_NAME=daily_inspiration
+
+# Email Service (Standard SMTP Protocol)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=promotionp270@gmail.com
+SMTP_PASSWORD=your_16_character_app_password
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
+EMAIL_FROM=promotionp270@gmail.com
+EMAIL_FROM_NAME=THE INSPIRE DEV
+
+# Google OAuth (Continue with Google)
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+
+# External Media APIs
+PEXELS_API_KEY=your_pexels_api_key
+
+# Security & Cron Secrets
+ADMIN_FEEDBACK_EMAIL=promotionp270@gmail.com
+SECRET_KEY=your-random-jwt-secret-key
+CRON_SECRET=your-secure-cron-secret-for-github-actions
+OTP_EXPIRY_MINUTES=5
+OTP_MAX_ATTEMPTS=3
+OTP_RATE_LIMIT_MINUTES=1
+
+
+================================================================================
+8. HOW TO RUN & TEST LOCALLY
+================================================================================
+
+1. Start development server:
+   python run.py
+   -> Runs at http://localhost:8000
+   -> Swagger API Docs: http://localhost:8000/docs
+
+2. Execute full automated test suite:
+   pytest -v
+   -> Verifies all 49 unit tests across authentication, SMTP, quotes, and jobs.
+
+3. Manually trigger the daily job via curl:
+   curl -X POST "http://localhost:8000/api/jobs/send-daily-inspiration" \
+     -H "Content-Type: application/json" \
+     -H "X-Cron-Secret: daily-inspiration-cron-secret-2026"
+
+================================================================================
+                              END OF ARCHITECTURE GUIDE
+================================================================================

@@ -32,20 +32,19 @@ async def db():
     database = get_database()
     
     # Clean up test data before tests
-    await database.users.delete_many({"email": {"$regex": "test.*@test\\.com"}})
-    await database.otp_records.delete_many({"email": {"$regex": "test.*@test\\.com"}})
-    await database.quotes.delete_many({"quote": {"$regex": "^Test Quote"}})
-    await database.delivery_history.delete_many({"user_id": {"$regex": "test_.*"}})
-    await database.email_logs.delete_many({"email": {"$regex": "test.*@test\\.com"}})
+    await database.users.delete_many({"email": {"$regex": "test.*@test\\.com", "$options": "i"}})
+    await database.otp_records.delete_many({"email": {"$regex": "test.*@test\\.com", "$options": "i"}})
+    await database.quotes.delete_many({"quote": {"$regex": ".*Test Quote.*", "$options": "i"}})
+    await database.delivery_history.delete_many({})
+    await database.email_logs.delete_many({"email": {"$regex": "test.*@test\\.com", "$options": "i"}})
     
     yield database
     
     # Clean up test data after tests
-    await database.users.delete_many({"email": {"$regex": "test.*@test\\.com"}})
-    await database.otp_records.delete_many({"email": {"$regex": "test.*@test\\.com"}})
-    await database.quotes.delete_many({"quote": {"$regex": "^Test Quote"}})
-    await database.delivery_history.delete_many({"user_id": {"$regex": "test_.*"}})
-    await database.email_logs.delete_many({"email": {"$regex": "test.*@test\\.com"}})
+    await database.users.delete_many({"email": {"$regex": "test.*@test\\.com", "$options": "i"}})
+    await database.otp_records.delete_many({"email": {"$regex": "test.*@test\\.com", "$options": "i"}})
+    await database.quotes.delete_many({"quote": {"$regex": ".*Test Quote.*", "$options": "i"}})
+    await database.email_logs.delete_many({"email": {"$regex": "test.*@test\\.com", "$options": "i"}})
     
     await close_mongo_connection()
 
