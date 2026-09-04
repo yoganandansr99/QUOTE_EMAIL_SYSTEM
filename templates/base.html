@@ -98,7 +98,7 @@
     <!-- Global Toast Notification -->
     <div id="global-toast" class="toast-notification"></div>
 
-    <script src="/static/js/main.js?v=4.0"></script>
+    <script src="{{ url_for('static', path='js/main.js') }}?v=4.0"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

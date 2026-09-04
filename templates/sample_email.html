@@ -51,7 +51,7 @@
 
         <!-- Featured Image -->
         <div class="email-showcase-image">
-            <img src="/static/images/sample-morning.jpg" id="sample-img-target" alt="Daily Inspirational Landscape" class="full-email-img">
+            <img src="{{ url_for('static', path='images/sample-morning.jpg') }}" id="sample-img-target" alt="Daily Inspirational Landscape" class="full-email-img">
         </div>
 
         <!-- Quote -->
@@ -128,7 +128,7 @@ const sampleThemes = {
         subject: "🌟 Good Morning — Your Daily Dose of Inspiration (Aug 21)",
         quote: "The secret of getting ahead is getting started. The secret of getting started is breaking your complex overwhelming tasks into small manageable tasks, and starting on the first one.",
         author: "— Mark Twain",
-        image: "/static/images/sample-morning.jpg",
+        image: "{{ url_for('static', path='images/sample-morning.jpg') }}",
         person: "<strong>Mark Twain (1835 – 1910)</strong> — Faced bankruptcy and severe personal setbacks in his fifties. Instead of giving up, he embarked on worldwide speaking tours and methodically wrote every day to triumph over adversity.",
         thought: "Most overwhelming goals don't fail due to lack of ability; they stall because the starting line feels too large. Today, focus on simply doing the very first small action.",
         challenge: "Set a 5-minute timer and begin the very first step of an important task you have put off."
@@ -137,7 +137,7 @@ const sampleThemes = {
         subject: "🌟 Courage & Resilience — Your Daily Dose of Inspiration (Aug 21)",
         quote: "Success is not final, failure is not fatal: It is the courage to continue that counts in the darkest hours.",
         author: "— Winston Churchill",
-        image: "/static/images/sample-resilience.jpg",
+        image: "{{ url_for('static', path='images/sample-resilience.jpg') }}",
         person: "<strong>Winston Churchill (1874 – 1965)</strong> — Overcame crushing military failures and political isolation during the 1930s to lead Britain through its darkest hours with unbreakable determination.",
         thought: "Setbacks are not stop signs; they are pivots. When friction arises today, reframe it not as a defeat, but as training that sharpens your resolve.",
         challenge: "Write down one recent setback you encountered and identify two specific lessons it taught you."
@@ -146,7 +146,7 @@ const sampleThemes = {
         subject: "🌟 Daily Wisdom & Focus — Your Daily Dose of Inspiration (Aug 21)",
         quote: "Do not dwell in the past, do not dream of the future, concentrate the mind on the present moment.",
         author: "— Gautama Buddha",
-        image: "/static/images/sample-growth.jpg",
+        image: "{{ url_for('static', path='images/sample-growth.jpg') }}",
         person: "<strong>Gautama Buddha (c. 5th century BCE)</strong> — Dedicated his life to mindfulness, philosophical inquiry, and inner peace, teaching millions that clarity begins from stillness.",
         thought: "In a world of rapid notifications and hurried routines, granting yourself just three quiet minutes of morning presence creates immense mental peace.",
         challenge: "Take 3 deep mindful breaths before starting your work session, and dedicate 15 minutes today to reading something enriching."

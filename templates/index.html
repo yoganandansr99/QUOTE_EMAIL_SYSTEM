@@ -103,7 +103,7 @@
                 <div class="email-preview-inner">
                     <!-- Photo Header -->
                     <div class="preview-media-wrap">
-                        <img src="/static/images/sample-morning.jpg" alt="Inspirational Alpine Sunrise" class="preview-hero-img">
+                        <img src="{{ url_for('static', path='images/sample-morning.jpg') }}" alt="Inspirational Alpine Sunrise" class="preview-hero-img">
                         <div class="preview-media-caption">🌅 Daily Curated Visual</div>
                     </div>
 
@@ -200,7 +200,7 @@
 
             <!-- Inspirational Photo -->
             <div class="email-showcase-image">
-                <img src="/static/images/sample-resilience.jpg" alt="Majestic Sunrise Ocean Cliff" class="full-email-img">
+                <img src="{{ url_for('static', path='images/sample-resilience.jpg') }}" alt="Majestic Sunrise Ocean Cliff" class="full-email-img">
             </div>
 
             <!-- Quote & Citation -->
@@ -376,7 +376,7 @@
      ========================================================================== -->
 <section class="immersive-quote-section reveal-fade">
     <div class="quote-backdrop">
-        <img src="/static/images/sample-growth.jpg" alt="Serene Redwood Forest Pathways" class="backdrop-img">
+        <img src="{{ url_for('static', path='images/sample-growth.jpg') }}" alt="Serene Redwood Forest Pathways" class="backdrop-img">
         <div class="backdrop-overlay"></div>
     </div>
 
