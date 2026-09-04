@@ -13,6 +13,24 @@ def test_clean_base_url_property():
         assert email_service.base_url == "https://my-azure-app.azurewebsites.net"
 
 
+def test_app_url_env_priority():
+    """Verify APP_URL takes priority and normalizes https."""
+    with patch.object(settings, 'app_url', 'https://custom-domain.com/'):
+        with patch.object(settings, 'app_base_url', ''):
+            assert settings.clean_base_url == "https://custom-domain.com"
+            assert email_service.base_url == "https://custom-domain.com"
+
+
+def test_website_hostname_azure_autodetect():
+    """Verify Azure WEBSITE_HOSTNAME auto-detection prepends https://."""
+    with patch.dict(os.environ, {"WEBSITE_HOSTNAME": "inspire-app.azurewebsites.net"}, clear=False):
+        with patch.object(settings, 'app_url', ''):
+            with patch.object(settings, 'app_base_url', ''):
+                with patch.dict(os.environ, {"APP_URL": "", "APP_BASE_URL": "", "BASE_URL": ""}):
+                    assert settings.clean_base_url == "https://inspire-app.azurewebsites.net"
+                    assert email_service.base_url == "https://inspire-app.azurewebsites.net"
+
+
 @pytest.mark.asyncio
 async def test_otp_email_contains_azure_base_url():
     """Verify that OTP email contains the production APP_BASE_URL."""

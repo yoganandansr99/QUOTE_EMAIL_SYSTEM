@@ -29,13 +29,20 @@ class EmailService:
     def base_url(self) -> str:
         """Resolve centralized application base URL for email hyperlinks."""
         raw_url = (
-            getattr(settings, "app_base_url", None)
+            getattr(settings, "clean_base_url", None)
+            or getattr(settings, "app_url", None)
+            or getattr(settings, "app_base_url", None)
             or getattr(settings, "base_url", None)
+            or os.getenv("APP_URL")
             or os.getenv("APP_BASE_URL")
             or os.getenv("BASE_URL")
+            or (f"https://{os.getenv('WEBSITE_HOSTNAME')}" if os.getenv("WEBSITE_HOSTNAME") else None)
             or "http://localhost:8000"
         )
-        return str(raw_url).strip().rstrip("/")
+        url = str(raw_url).strip()
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = f"https://{url}"
+        return url.rstrip("/")
     
     async def send_otp_email(self, to_email: str, otp: str) -> bool:
         """Send OTP verification email."""

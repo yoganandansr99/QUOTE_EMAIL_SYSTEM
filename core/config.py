@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
     
     # App Settings & Deployment URLs
-    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("BASE_URL", "http://localhost:8000"))
+    app_url: str = os.getenv("APP_URL", "")
+    app_base_url: str = os.getenv("APP_BASE_URL", os.getenv("APP_URL", os.getenv("BASE_URL", "")))
     admin_feedback_email: str = os.getenv("ADMIN_FEEDBACK_EMAIL", "promotionp270@gmail.com")
     secret_key: str = os.getenv("SECRET_KEY", "change-me-in-production")
     cron_secret: str = os.getenv("CRON_SECRET", "daily-inspiration-secret-key-change-in-prod")
@@ -36,8 +37,19 @@ class Settings(BaseSettings):
     @property
     def clean_base_url(self) -> str:
         """Return base application URL without trailing slash."""
-        url = self.app_base_url or "http://localhost:8000"
-        return url.strip().rstrip("/")
+        raw_url = (
+            self.app_base_url
+            or self.app_url
+            or os.getenv("APP_URL")
+            or os.getenv("APP_BASE_URL")
+            or os.getenv("BASE_URL")
+            or (f"https://{os.getenv('WEBSITE_HOSTNAME')}" if os.getenv("WEBSITE_HOSTNAME") else None)
+            or "http://localhost:8000"
+        )
+        url = str(raw_url).strip()
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = f"https://{url}"
+        return url.rstrip("/")
 
     @property
     def base_url(self) -> str:

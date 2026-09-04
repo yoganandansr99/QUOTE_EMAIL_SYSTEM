@@ -112,31 +112,62 @@ async def send_welcome_email(db: AsyncIOMotorDatabase, email: str):
 
 
 async def verify_google_token(credential: str) -> dict:
-    """Verify Google ID token via Google's tokeninfo endpoint."""
+    """Verify Google token (ID token JWT or OAuth2 Access Token) via Google endpoints."""
+    token = str(credential).strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Google authentication token is empty.")
+    
     try:
-        async with httpx.AsyncClient(timeout=10.0) as http_client:
+        async with httpx.AsyncClient(timeout=12.0) as http_client:
+            # 1. First attempt ID token verification (Google Identity Services JWT)
             resp = await http_client.get(
                 "https://oauth2.googleapis.com/tokeninfo",
-                params={"id_token": credential}
+                params={"id_token": token}
             )
-            if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail="Invalid Google authentication token.")
+            if resp.status_code == 200:
+                payload = resp.json()
+                # Check audience if client_id configured
+                if settings.google_client_id:
+                    aud = payload.get("aud")
+                    if aud and aud != settings.google_client_id:
+                        raise HTTPException(status_code=400, detail="Google Client ID mismatch.")
+                
+                email = payload.get("email", "").lower().strip()
+                email_verified = payload.get("email_verified") in [True, "true", "True", 1]
+                
+                if not email or not email_verified:
+                    raise HTTPException(status_code=400, detail="Google account email is not verified.")
+                
+                return payload
             
-            payload = resp.json()
-            
-            # Check audience if client_id configured
-            if settings.google_client_id:
-                aud = payload.get("aud")
-                if aud != settings.google_client_id:
-                    raise HTTPException(status_code=400, detail="Google Client ID mismatch.")
-            
-            email = payload.get("email", "").lower().strip()
-            email_verified = payload.get("email_verified") in [True, "true", "True", 1]
-            
-            if not email or not email_verified:
-                raise HTTPException(status_code=400, detail="Google account email is not verified.")
-            
-            return payload
+            # 2. Fallback: attempt Access Token verification (Google OAuth2 Token Client)
+            resp_access = await http_client.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"access_token": token}
+            )
+            if resp_access.status_code == 200:
+                token_info = resp_access.json()
+                if settings.google_client_id:
+                    aud = token_info.get("aud")
+                    if aud and aud != settings.google_client_id:
+                        raise HTTPException(status_code=400, detail="Google Client ID mismatch.")
+                
+                # Fetch verified user profile info
+                userinfo_resp = await http_client.get(
+                    "https://www.googleapis.com/oauth2/v3/userinfo",
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if userinfo_resp.status_code == 200:
+                    userinfo = userinfo_resp.json()
+                    email = userinfo.get("email", "").lower().strip()
+                    email_verified = userinfo.get("email_verified") in [True, "true", "True", 1]
+                    
+                    if not email or not email_verified:
+                        raise HTTPException(status_code=400, detail="Google account email is not verified.")
+                    
+                    return userinfo
+
+            raise HTTPException(status_code=400, detail="Invalid Google authentication token.")
     except HTTPException:
         raise
     except Exception as e:

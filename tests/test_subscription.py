@@ -205,3 +205,45 @@ class TestSubscription:
         assert response.status_code == 400
         assert "credential" in response.json()["detail"].lower()
 
+    async def test_verify_google_token_id_token_pathway(self):
+        """Test verify_google_token succeeds with standard ID token."""
+        from routers.subscription import verify_google_token
+        import httpx
+
+        mock_resp = httpx.Response(
+            status_code=200,
+            json={"email": "verified_user@gmail.com", "email_verified": True, "name": "Verified User"},
+            request=httpx.Request("GET", "https://oauth2.googleapis.com/tokeninfo")
+        )
+
+        with patch("httpx.AsyncClient.get", return_value=mock_resp):
+            payload = await verify_google_token("valid_id_token_jwt")
+            assert payload["email"] == "verified_user@gmail.com"
+            assert payload["name"] == "Verified User"
+
+    async def test_verify_google_token_access_token_pathway(self):
+        """Test verify_google_token succeeds with OAuth2 access token fallback."""
+        from routers.subscription import verify_google_token
+        import httpx
+
+        mock_id_fail = httpx.Response(
+            status_code=400,
+            json={"error": "invalid_token"},
+            request=httpx.Request("GET", "https://oauth2.googleapis.com/tokeninfo")
+        )
+        mock_access_ok = httpx.Response(
+            status_code=200,
+            json={"scope": "email profile openid"},
+            request=httpx.Request("GET", "https://oauth2.googleapis.com/tokeninfo")
+        )
+        mock_userinfo = httpx.Response(
+            status_code=200,
+            json={"email": "oauth_user@gmail.com", "email_verified": True, "name": "OAuth User"},
+            request=httpx.Request("GET", "https://www.googleapis.com/oauth2/v3/userinfo")
+        )
+
+        with patch("httpx.AsyncClient.get", side_effect=[mock_id_fail, mock_access_ok, mock_userinfo]):
+            payload = await verify_google_token("ya29.valid_access_token")
+            assert payload["email"] == "oauth_user@gmail.com"
+            assert payload["name"] == "OAuth User"
+

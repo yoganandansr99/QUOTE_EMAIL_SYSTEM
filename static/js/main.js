@@ -454,13 +454,14 @@ function checkUrlAlerts() {
 }
 
 /* --------------------------------------------------------------------------
-   4. GOOGLE AUTHENTICATION MANAGER (Strict Google Identity Services OAuth)
+   4. GOOGLE AUTHENTICATION MANAGER (Clean OAuth2 & Identity Services Engine)
    -------------------------------------------------------------------------- */
 window.GoogleAuthManager = {
     clientId: '',
     isConfigured: false,
     isInitialized: false,
     isSigningIn: false,
+    tokenClient: null,
     safetyTimer: null,
 
     async init() {
@@ -470,7 +471,7 @@ window.GoogleAuthManager = {
             if (res.ok) {
                 const data = await res.json();
                 this.clientId = data.client_id || '';
-                this.isConfigured = data.is_configured;
+                this.isConfigured = Boolean(data.is_configured && this.clientId);
             }
         } catch (e) {
             console.warn('GoogleAuthManager: Failed to fetch client configuration', e);
@@ -480,54 +481,53 @@ window.GoogleAuthManager = {
     },
 
     setupGIS() {
-        if (this.isInitialized) return;
+        if (this.isInitialized || !this.clientId) return;
 
-        if (typeof google !== 'undefined' && google.accounts && google.accounts.id && this.clientId) {
+        if (typeof google !== 'undefined' && google.accounts) {
             try {
-                google.accounts.id.initialize({
-                    client_id: this.clientId,
-                    callback: (response) => this.handleCredentialResponse(response),
-                    auto_select: false,
-                    cancel_on_tap_outside: true
-                });
-                this.isInitialized = true;
-
-                // Ensure global hidden GIS render target exists in DOM
-                let globalTarget = document.getElementById('google-hidden-btn-global');
-                if (!globalTarget) {
-                    globalTarget = document.createElement('div');
-                    globalTarget.id = 'google-hidden-btn-global';
-                    globalTarget.className = 'google-hidden-btn';
-                    globalTarget.style.cssText = 'position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;top:-9999px;left:-9999px;';
-                    document.body.appendChild(globalTarget);
-                }
-
-                // Render standard Google button for programmatic click trigger
-                google.accounts.id.renderButton(globalTarget, {
-                    type: 'standard',
-                    theme: 'outline',
-                    size: 'large'
-                });
-
-                // Also render to hero button if present on index page
-                const heroBtn = document.getElementById('google-hidden-btn-hero');
-                if (heroBtn) {
-                    google.accounts.id.renderButton(heroBtn, {
-                        type: 'standard',
-                        theme: 'outline',
-                        size: 'large'
+                // 1. Initialize Google OAuth2 Token Client for custom click buttons (No FedCM collisions)
+                if (google.accounts.oauth2 && typeof google.accounts.oauth2.initTokenClient === 'function') {
+                    this.tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: this.clientId,
+                        scope: 'email profile openid',
+                        callback: (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                this.handleCredentialResponse({ credential: tokenResponse.access_token });
+                            } else {
+                                this.resetState();
+                                if (tokenResponse && tokenResponse.error) {
+                                    console.warn('Google OAuth response error:', tokenResponse.error);
+                                }
+                            }
+                        },
+                        error_callback: (err) => {
+                            console.warn('Google OAuth error:', err);
+                            this.resetState();
+                        }
                     });
                 }
+
+                // 2. Also initialize Google Identity Services without FedCM prompt collisions
+                if (google.accounts.id && typeof google.accounts.id.initialize === 'function') {
+                    google.accounts.id.initialize({
+                        client_id: this.clientId,
+                        callback: (response) => this.handleCredentialResponse(response),
+                        auto_select: false,
+                        use_fedcm_for_prompt: false
+                    });
+                }
+
+                this.isInitialized = true;
             } catch (err) {
                 console.warn('GoogleAuthManager: GIS initialization error', err);
             }
-        } else if (!this.isInitialized && this.clientId) {
-            // Check again if GIS script loads slightly after DOMContentLoaded
+        } else {
+            // Check again once Google script finishes loading
             setTimeout(() => {
                 if (typeof google !== 'undefined' && google.accounts && this.clientId && !this.isInitialized) {
                     this.setupGIS();
                 }
-            }, 800);
+            }, 600);
         }
     },
 
@@ -567,7 +567,7 @@ window.GoogleAuthManager = {
     },
 
     signIn() {
-        // 1. Guard against multiple simultaneous Google sign-in requests
+        // 1. Guard against multiple simultaneous Google sign-in requests (Single-flight mutex)
         if (this.isSigningIn) {
             console.warn('GoogleAuthManager: Sign-in already in progress');
             return;
@@ -580,8 +580,9 @@ window.GoogleAuthManager = {
         }
 
         // 3. Ensure GIS is available
-        if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+        if (typeof google === 'undefined' || !google.accounts) {
             showToast('Loading Google Services, please try again in a moment...');
+            this.setupGIS();
             return;
         }
 
@@ -592,28 +593,27 @@ window.GoogleAuthManager = {
         // 4. Lock sign-in and set loading state on buttons
         this.setLoading(true);
 
-        // Safety fallback timer: re-enable buttons after 20s if popup closed without event
+        // Safety fallback timer: re-enable buttons after 25s if popup was closed without event
         this.safetyTimer = setTimeout(() => {
             if (this.isSigningIn) {
                 console.warn('GoogleAuthManager: Sign-in safety timeout reached.');
                 this.resetState();
             }
-        }, 20000);
+        }, 25000);
 
-        // 5. Trigger Google OAuth via rendered GIS button (cleanest single-request path)
+        // 5. Trigger Google OAuth popup (Uses Token Client direct user gesture)
         try {
-            const btn = document.querySelector('#google-hidden-btn-global div[role="button"]')
-                     || document.querySelector('#google-hidden-btn-hero div[role="button"]')
-                     || document.querySelector('.google-hidden-btn div[role="button"]');
-            
-            if (btn) {
-                btn.click();
-            } else {
+            if (this.tokenClient && typeof this.tokenClient.requestAccessToken === 'function') {
+                this.tokenClient.requestAccessToken({ prompt: '' });
+            } else if (google.accounts.id && typeof google.accounts.id.prompt === 'function') {
                 google.accounts.id.prompt((notification) => {
                     if (notification.isDismissedMoment() || notification.isSkippedMoment() || notification.isNotDisplayed()) {
                         this.resetState();
                     }
                 });
+            } else {
+                this.resetState();
+                showToast('Google Sign-In is still loading. Please retry.');
             }
         } catch (e) {
             console.error('GoogleAuthManager: Error triggering sign-in', e);
@@ -630,11 +630,10 @@ window.GoogleAuthManager = {
 
         if (!response || !response.credential) {
             this.resetState();
-            showToast('Google sign-in was cancelled.');
             return;
         }
 
-        showToast('Verifying Google credentials with backend... ⏳');
+        showToast('Verifying Google credentials... ⏳');
 
         try {
             const res = await fetch('/api/subscription/google-auth', {
@@ -655,7 +654,7 @@ window.GoogleAuthManager = {
                     } else {
                         window.location.href = `/preferences?email=${encodeURIComponent(data.email)}&google=true`;
                     }
-                }, 700);
+                }, 600);
             } else {
                 this.resetState();
                 showToast(data.detail || 'Google authentication failed.');
