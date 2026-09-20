@@ -293,13 +293,14 @@ class QuoteService:
         self,
         user_id: str,
         interests: Optional[List[str]] = None,
+        target_category: Optional[str] = None,
         days: int = 365
     ) -> Optional[Dict[str, Any]]:
         """
         Select an eligible quote for a user:
         1. Finds all quote IDs delivered to this user within the last 365 days.
         2. Excludes those quote IDs (handles both ObjectId and string matches).
-        3. Prioritizes quotes matching the user's selected interests.
+        3. Prioritizes quotes matching target_category (for preference cycling) or interests.
         4. Returns one eligible quote or None if no quotes are available.
         """
         cutoff_date = datetime.utcnow() - timedelta(days=days)
@@ -337,7 +338,27 @@ class QuoteService:
         # Base filter excluding recently delivered quotes
         base_query = {"_id": {"$nin": obj_excluded}} if obj_excluded else {}
 
-        # 2. Try matching user's preferred interest categories
+        # 2. Priority A: Exact target_category (from cycling engine)
+        if target_category:
+            cleaned_target = str(target_category).lower().strip()
+            target_query = {
+                **base_query,
+                "category": cleaned_target
+            }
+            matching_quotes = list(await self.quotes_collection.find(target_query).to_list(length=None))
+            if matching_quotes:
+                selected = random.choice(matching_quotes)
+                selected["id"] = str(selected.pop("_id"))
+                return selected
+
+            # If all quotes in target_category were sent in 365 days, select from all in that category
+            cat_all_quotes = list(await self.quotes_collection.find({"category": cleaned_target}).to_list(length=None))
+            if cat_all_quotes:
+                selected = random.choice(cat_all_quotes)
+                selected["id"] = str(selected.pop("_id"))
+                return selected
+
+        # 3. Priority B: User's list of interest categories (if target_category not specified)
         if interests:
             interest_categories = [str(i).lower().strip() for i in interests if str(i).strip()]
             if interest_categories:
@@ -351,14 +372,14 @@ class QuoteService:
                     selected["id"] = str(selected.pop("_id"))
                     return selected
 
-        # 3. Fallback: Select from any eligible quote not received in 365 days
+        # 4. Fallback: Select from any eligible quote not received in 365 days
         all_eligible_quotes = list(await self.quotes_collection.find(base_query).to_list(length=None))
         if all_eligible_quotes:
             selected = random.choice(all_eligible_quotes)
             selected["id"] = str(selected.pop("_id"))
             return selected
 
-        # 4. If all quotes were sent in 365 days, select from all available quotes
+        # 5. Fallback: If all quotes in entire DB were sent in 365 days, select from all available quotes
         all_quotes = list(await self.quotes_collection.find({}).to_list(length=None))
         if all_quotes:
             selected = random.choice(all_quotes)

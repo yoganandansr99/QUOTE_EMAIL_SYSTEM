@@ -36,6 +36,7 @@ async def connect_to_mongo():
         await database.delivery_history.create_index([("user_id", 1), ("sent_at", -1)])
         await database.otp_records.create_index([("email", 1), ("created_at", -1)])
         await database.feedback.create_index([("user_id", 1), ("created_at", -1)])
+        await database.category_images.create_index([("category", 1), ("image_reference", 1)], unique=True)
         print("Success: Database indexes created/verified")
     except Exception as e:
         print(f"Note: Index creation: {e}")

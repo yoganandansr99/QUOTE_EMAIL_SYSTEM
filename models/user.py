@@ -26,6 +26,7 @@ class User(BaseModel):
     email: EmailStr
     status: UserStatus = UserStatus.PENDING
     interests: List[InterestCategory] = []
+    category_cycle_index: int = 0
     auth_provider: Optional[str] = "email"
     name: Optional[str] = None
     picture: Optional[str] = None

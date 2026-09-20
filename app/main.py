@@ -19,6 +19,7 @@ from core.config import settings
 from routers import subscription_router, preferences_router, feedback_router, jobs_router
 from services.quote_service import QuoteService
 from services.scheduler_service import DailyJobService
+from services.image_service import ImageService
 
 
 # Lifespan context manager
@@ -28,11 +29,15 @@ async def lifespan(app: FastAPI):
     await connect_to_mongo()
     print("Success: Connected to MongoDB")
 
-    # Initialize quote dataset from local JSON into MongoDB
+    # Initialize quote dataset and category images from local JSON into MongoDB
     db = get_database()
     quote_service = QuoteService(db)
     await quote_service.ensure_minimum_quotes(minimum=50)
     print("Success: Quotes initialized from local dataset")
+
+    img_service = ImageService(db)
+    await img_service.ensure_minimum_images(minimum_per_category=50)
+    print("Success: Category images initialized in MongoDB")
 
     yield
 

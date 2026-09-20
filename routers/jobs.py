@@ -10,6 +10,7 @@ from core.database import get_database
 from core.config import settings
 from services.scheduler_service import DailyJobService
 from services.quote_service import QuoteService
+from services.image_service import ImageService
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -64,5 +65,23 @@ async def trigger_quote_import(
     return {
         "success": True,
         "message": "Quote dataset import completed.",
+        "result": result
+    }
+
+
+@router.post("/seed-images")
+async def trigger_image_seed(
+    authenticated: bool = Depends(verify_cron_secret),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+) -> Dict[str, Any]:
+    """
+    Protected endpoint to seed or sync 150 category images per category into MongoDB.
+    Requires header: X-Cron-Secret
+    """
+    img_service = ImageService(db)
+    result = await img_service.seed_category_images()
+    return {
+        "success": True,
+        "message": "Category images seed completed.",
         "result": result
     }

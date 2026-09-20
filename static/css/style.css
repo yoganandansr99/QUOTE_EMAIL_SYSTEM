@@ -3547,6 +3547,348 @@ main {
     transform: translateY(-1px);
 }
 
+/* ==========================================================================
+   RESPONSIVE DESIGN SYSTEM — MOBILE, TABLET, AND DESKTOP
+   Breakpoints: 1024px, 868px, 768px, 600px, 480px, 360px
+   ========================================================================== */
 
+/* Prevent horizontal overflow globally */
+html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
 
+.container, main {
+    width: 100%;
+    max-width: var(--max-width);
+    padding-left: clamp(14px, 3vw, 24px);
+    padding-right: clamp(14px, 3vw, 24px);
+    box-sizing: border-box;
+}
 
+/* --------------------------------------------------------------------------
+   Desktop & Tablet Large (<= 1024px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+    :root {
+        --max-width: 960px;
+    }
+
+    .hero-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    .features-grid,
+    .how-it-works-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .footer-top-grid {
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 30px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Tablets & Mobile Navigation Breakpoint (<= 868px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 868px) {
+    /* Navbar Mobile Drawer */
+    .mobile-toggle {
+        display: flex;
+        z-index: 1001;
+    }
+
+    .nav-links {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: min(85vw, 320px);
+        height: 100vh;
+        background: #ffffff;
+        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.15);
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 85px 24px 30px;
+        gap: 8px;
+        transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        overflow-y: auto;
+    }
+
+    .nav-links.open {
+        right: 0;
+    }
+
+    .nav-links .nav-item {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-heading);
+    }
+
+    .nav-links .nav-item:hover,
+    .nav-links .nav-item.active {
+        background: var(--grad-primary-subtle);
+        color: var(--color-primary);
+    }
+
+    .btn-nav-cta {
+        padding: 9px 16px;
+        font-size: 13.5px;
+    }
+
+    /* Hero Section Stacking */
+    .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        text-align: center;
+    }
+
+    .hero-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .hero-heading {
+        font-size: clamp(28px, 6vw, 42px);
+        line-height: 1.2;
+    }
+
+    .hero-description {
+        font-size: 16px;
+        max-width: 520px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .hero-subscribe-card {
+        width: 100%;
+        max-width: 540px;
+    }
+
+    .hero-right {
+        max-width: 540px;
+        margin: 0 auto;
+        width: 100%;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Small Tablets & Large Phones (<= 768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .page-header-center h1,
+    .page-title {
+        font-size: clamp(24px, 5vw, 32px);
+    }
+
+    .page-subtitle {
+        font-size: 14.5px;
+    }
+
+    /* Grids to Single Column */
+    .features-grid,
+    .how-it-works-grid,
+    .interests-grid-two-col {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .footer-top-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    .footer-brand-col {
+        grid-column: span 2;
+    }
+
+    .footer-bottom-row {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .account-status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    /* Preferences and Dashboard */
+    .preferences-card-box {
+        padding: 20px 16px;
+    }
+
+    .pref-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    /* Auth & Verification Card */
+    .auth-card,
+    .account-lookup-box {
+        padding: 28px 18px;
+        margin: 20px auto;
+        max-width: 100%;
+    }
+
+    .auth-title {
+        font-size: 22px;
+    }
+
+    /* Sample Email / Preview Responsiveness */
+    .sample-email-card-wrapper,
+    .floating-email-card {
+        width: 100%;
+        max-width: 100%;
+        padding: 16px;
+    }
+
+    .floating-email-card img,
+    .sample-email-card-wrapper img {
+        width: 100%;
+        height: auto;
+        max-height: 280px;
+        object-fit: cover;
+    }
+
+    /* Modals */
+    .account-modal-card {
+        width: 94vw;
+        max-width: 440px;
+        padding: 20px 16px;
+        margin: 15px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile Phones (<= 480px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+    /* Input Action Groups (Stack input + button) */
+    .input-action-group {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .input-action-group .custom-email-input,
+    .input-action-group input[type="email"],
+    .input-action-group input[type="text"] {
+        width: 100%;
+        min-height: 48px;
+        font-size: 15px;
+    }
+
+    .input-action-group .btn-primary,
+    .input-action-group button {
+        width: 100%;
+        min-height: 48px;
+        justify-content: center;
+    }
+
+    /* Touch Friendly Buttons (min 44px) */
+    .btn-primary,
+    .btn-google-auth,
+    .btn-secondary-link,
+    .btn-open-panel {
+        min-height: 44px;
+        padding: 12px 18px;
+        font-size: 14.5px;
+    }
+
+    /* OTP Code Grid */
+    .otp-boxes-grid {
+        gap: 6px;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .otp-digit-box {
+        width: clamp(38px, 12vw, 48px);
+        height: clamp(44px, 14vw, 54px);
+        font-size: 20px;
+        border-radius: var(--radius-sm);
+    }
+
+    /* Trust Notes and Badges */
+    .form-trust-notes {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px 10px;
+        font-size: 12px;
+    }
+
+    /* Footer Single Column */
+    .footer-top-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .footer-brand-col {
+        grid-column: span 1;
+    }
+
+    /* Category Select Cards */
+    .interest-select-card {
+        padding: 14px 12px;
+    }
+
+    .topic-info strong {
+        font-size: 14.5px;
+    }
+
+    .topic-subtext {
+        font-size: 12px;
+    }
+
+    /* Tables in Mobile */
+    .feedback-table-wrapper,
+    table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Extra Small Mobile (<= 360px — iPhone SE / Small Screens)
+   -------------------------------------------------------------------------- */
+@media (max-width: 360px) {
+    .brand-logo .logo-text {
+        font-size: 16px;
+    }
+
+    .btn-nav-cta {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .pill-badge {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+
+    .hero-heading {
+        font-size: 24px;
+    }
+
+    .otp-boxes-grid {
+        gap: 4px;
+    }
+
+    .otp-digit-box {
+        width: 36px;
+        height: 42px;
+        font-size: 18px;
+    }
+}

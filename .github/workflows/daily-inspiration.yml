@@ -2,8 +2,9 @@ name: Daily Inspiration Dispatch
 
 on:
   schedule:
-    # Runs daily at 08:00 AM UTC (adjust as desired)
-    - cron: '0 8 * * *'
+    # Runs daily at 05:00 AM IST (Asia/Kolkata)
+    - cron: '0 5 * * *'
+      timezone: "Asia/Kolkata"
   workflow_dispatch:
     inputs:
       reason:

@@ -3,6 +3,7 @@ from .email_service import email_service, EmailService
 from .quote_service import QuoteService
 from .image_service import ImageService
 from .scheduler_service import SchedulerService
+from .groq_service import GroqService, groq_service
 
 __all__ = [
     "OTPService",
@@ -10,5 +11,7 @@ __all__ = [
     "EmailService",
     "QuoteService",
     "ImageService",
-    "SchedulerService"
+    "SchedulerService",
+    "GroqService",
+    "groq_service"
 ]

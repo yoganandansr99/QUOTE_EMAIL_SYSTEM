@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -12,36 +13,47 @@ from models.user import UserStatus
 from .email_service import email_service
 from .quote_service import QuoteService
 from .image_service import ImageService
+from .groq_service import groq_service
+
+logger = logging.getLogger("scheduler_service")
 
 
 class DailyJobService:
     """
     Executes the daily inspiration email delivery job across verified subscribers.
-    Does not use background cron/APScheduler; triggered on-demand or via GitHub Actions.
+    Integrates:
+    - Multi-category cycling in exact preference order.
+    - 365-day quote uniqueness enforcement.
+    - Category image retrieval from MongoDB with rotation.
+    - Groq AI generated Person of the Day, Today's Thought, and Today's Challenge with anti-hallucination guardrails.
+    - Resilient error handling and batch processing isolation.
     """
 
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self.quote_service = QuoteService(db)
-        self.image_service = ImageService()
+        self.image_service = ImageService(db)
 
     async def execute_daily_inspiration_job(self) -> Dict[str, Any]:
         """
-        Execute the daily inspiration email process:
-        1. Ensure quotes dataset is seeded.
+        Execute the complete daily inspiration email dispatch pipeline:
+        1. Ensure quotes dataset and category images are seeded in MongoDB.
         2. Query all active verified subscribers.
-        3. For each user, select an eligible quote (365-day uniqueness enforced).
-        4. Fetch & cache related imagery.
-        5. Send personalized email.
-        6. Save delivery_history ONLY after successful delivery.
-        7. Log failures to email_logs.
-        8. Continue processing other users if one fails.
+        3. For each user:
+           a. Calculate next category based on user's preference cycle index.
+           b. Select 365-day unread quote for that category.
+           c. Fetch category image from MongoDB.
+           d. Call Groq AI for structured content (Person of the Day, Today's Thought, Today's Challenge).
+           e. Send email via SMTP.
+           f. Record delivery_history and advance category_cycle_index on success.
+           g. Log failure and isolate errors so other users continue.
         """
         start_time = datetime.utcnow()
         print(f"[{start_time.isoformat()}] Starting Daily Inspiration Job...")
 
-        # 1. Ensure quotes are populated from dataset
+        # 1. Ensure quotes and images are populated in MongoDB
         await self.quote_service.ensure_minimum_quotes(minimum=50)
+        await self.image_service.ensure_minimum_images(minimum_per_category=50)
 
         # 2. Get all verified subscribers
         subscribers = list(await self.db.users.find({
@@ -59,13 +71,27 @@ class DailyJobService:
         for subscriber in subscribers:
             user_id = str(subscriber.get("_id"))
             user_email = subscriber.get("email")
-            user_interests = subscriber.get("interests", [])
+            user_interests = subscriber.get("interests", []) or []
 
             try:
-                # 3. Select 365-day eligible quote
+                # 3. Determine active category for today using preference cycling
+                target_category = None
+                next_cycle_index = 0
+
+                if user_interests:
+                    current_cycle_index = subscriber.get("category_cycle_index", 0)
+                    if not isinstance(current_cycle_index, int) or current_cycle_index < 0:
+                        current_cycle_index = 0
+                    
+                    effective_index = current_cycle_index % len(user_interests)
+                    target_category = str(user_interests[effective_index]).lower().strip()
+                    next_cycle_index = (effective_index + 1) % len(user_interests)
+
+                # 4. Select 365-day eligible quote
                 quote = await self.quote_service.get_eligible_quote_for_user(
                     user_id=user_id,
-                    interests=user_interests,
+                    interests=user_interests if not target_category else None,
+                    target_category=target_category,
                     days=365
                 )
 
@@ -75,38 +101,62 @@ class DailyJobService:
                     continue
 
                 quote_id = quote.get("id")
+                quote_category = quote.get("category") or target_category or "personal_growth"
 
-                # 4. Fetch image if not cached
-                if not quote.get("image_url"):
-                    image_data = await self.image_service.get_image_for_quote(
-                        quote=quote.get("quote"),
-                        category=quote.get("category"),
-                        tags=quote.get("tags")
-                    )
-                    quote["image_url"] = image_data.get("url")
-                    quote["image_source"] = image_data.get("source")
-                    quote["image_photographer"] = image_data.get("photographer")
+                # 5. Fetch Category Image from MongoDB (with rotation and fallbacks)
+                image_data = await self.image_service.get_image_for_category(
+                    category=quote_category,
+                    user_id=user_id
+                )
+                image_url = image_data.get("url")
+                image_ref = image_data.get("image_reference")
 
-                    await self.quote_service.update_quote_image(quote_id, image_data)
+                # 6. Groq AI Generation for Person of the Day, Today's Thought, and Today's Challenge
+                verified_story = quote.get("person_story") or self._get_default_person_story(quote.get("author", "Inspirational Leader"))
+                verified_action = quote.get("daily_action") or self._get_default_daily_action(quote_category)
 
-                # Prepare content
-                person_story = quote.get("person_story") or self._get_default_person_story(quote.get("author"))
-                daily_action = quote.get("daily_action") or self._get_default_daily_action(quote.get("category"))
+                ai_content = await groq_service.generate_email_content(
+                    quote=quote.get("quote", ""),
+                    author=quote.get("author", "Unknown"),
+                    category=quote_category,
+                    verified_person_story=verified_story,
+                    verified_daily_action=verified_action
+                )
 
-                # 5. Send Email
+                # 7. Dispatch Email
                 email_sent = await email_service.send_daily_inspiration_email(
                     to_email=user_email,
                     quote=quote.get("quote"),
                     author=quote.get("author"),
-                    image_url=quote.get("image_url"),
-                    person_story=person_story,
-                    daily_action=daily_action,
-                    user_id=user_id
+                    image_url=image_url,
+                    person_story=ai_content.get("person_of_day", verified_story),
+                    daily_action=ai_content.get("todays_challenge", verified_action),
+                    user_id=user_id,
+                    todays_thought=ai_content.get("todays_thought"),
+                    category_name=quote_category
                 )
 
                 if email_sent:
-                    # 6. Save delivery_history ONLY on successful delivery
-                    await self._record_successful_delivery(user_id=user_id, quote_id=quote_id)
+                    # 8. Record successful delivery ONLY on success
+                    await self._record_successful_delivery(
+                        user_id=user_id,
+                        quote_id=quote_id,
+                        category=quote_category,
+                        image_reference=image_ref
+                    )
+
+                    # Advance user category cycle index in MongoDB
+                    if user_interests:
+                        await self.db.users.update_one(
+                            {"_id": subscriber["_id"]},
+                            {
+                                "$set": {
+                                    "category_cycle_index": next_cycle_index,
+                                    "updated_at": datetime.utcnow()
+                                }
+                            }
+                        )
+
                     await self._log_email(
                         user_id=user_id,
                         email=user_email,
@@ -115,7 +165,7 @@ class DailyJobService:
                     )
                     sent_count += 1
                 else:
-                    # Log failure in email_logs only (not delivery_history)
+                    # Log failure in email_logs only (not delivery_history, do not advance cycle)
                     error_msg = getattr(email_service, "last_error", None) or "SMTP delivery rejected or failed to dispatch email."
                     await self._log_email(
                         user_id=user_id,
@@ -156,18 +206,26 @@ class DailyJobService:
             "sent": sent_count,
             "failed": failed_count,
             "skipped": skipped_count,
-            "errors": errors[:10]  # Return sample of errors if any
+            "errors": errors[:10]
         }
 
     async def send_daily_emails(self) -> Dict[str, Any]:
         """Backward-compatible alias for execute_daily_inspiration_job."""
         return await self.execute_daily_inspiration_job()
 
-    async def _record_successful_delivery(self, user_id: str, quote_id: str):
+    async def _record_successful_delivery(
+        self,
+        user_id: str,
+        quote_id: str,
+        category: Optional[str] = None,
+        image_reference: Optional[str] = None
+    ):
         """Record successful delivery in delivery_history."""
         delivery_record = {
             "user_id": user_id,
             "quote_id": quote_id,
+            "category": category,
+            "image_reference": image_reference,
             "sent_at": datetime.utcnow(),
             "status": "sent"
         }
@@ -187,7 +245,10 @@ class DailyJobService:
 
     def _get_default_person_story(self, author: str) -> str:
         """Get a default inspirational background story."""
-        return f"{author} has inspired countless individuals through their wisdom and achievements. Their journey reminds us that every great accomplishment begins with a single step and the courage to pursue our dreams."
+        return (
+            f"{author} has inspired countless individuals through their wisdom and achievements. "
+            "Their journey reminds us that every great accomplishment begins with a single step and the courage to pursue our dreams."
+        )
 
     def _get_default_daily_action(self, category: str) -> str:
         """Get a default actionable challenge based on category."""

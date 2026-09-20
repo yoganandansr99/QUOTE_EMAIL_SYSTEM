@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # External APIs & OAuth
     pexels_api_key: str = os.getenv("PEXELS_API_KEY", "")
     google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     
     # App Settings & Deployment URLs
     app_url: str = os.getenv("APP_URL", "")

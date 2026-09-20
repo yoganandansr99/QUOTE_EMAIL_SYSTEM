@@ -81,7 +81,9 @@ class EmailService:
         image_url: str,
         person_story: str,
         daily_action: str,
-        user_id: str
+        user_id: str,
+        todays_thought: Optional[str] = None,
+        category_name: Optional[str] = None
     ) -> bool:
         """Send daily inspiration email."""
         subject = f"🌟 Your Daily Inspiration - {datetime.now().strftime('%B %d, %Y')}"
@@ -92,12 +94,20 @@ class EmailService:
         if not safe_image_url or not safe_image_url.startswith("http"):
             safe_image_url = "https://images.pexels.com/photos/1114690/pexels-photo-1114690.jpeg?auto=compress&cs=tinysrgb&w=800"
         
+        thought_content = todays_thought.strip() if todays_thought and todays_thought.strip() else (
+            "Let this quote inspire you to take action and make today count. "
+            "Remember, every great journey begins with a single step and a dedicated heart."
+        )
+
+        category_badge = f'<div style="display: inline-block; background: rgba(255,255,255,0.25); color: white; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 8px; text-transform: capitalize;">✨ {category_name.replace("_", " ")}</div>' if category_name else ""
+
         body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
                 <h1 style="color: white; margin: 0;">Good Morning!</h1>
                 <p style="color: rgba(255,255,255,0.9); margin-top: 10px;">Your daily dose of inspiration is here ✨</p>
+                {category_badge}
             </div>
             
             <div style="background: white; padding: 40px 30px;">
@@ -119,7 +129,7 @@ class EmailService:
                 
                 <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 25px; border-radius: 10px; margin: 25px 0;">
                     <h3 style="color: #333; margin-top: 0;">💭 Today's Thought</h3>
-                    <p style="color: #555; line-height: 1.6;">Let this quote inspire you to take action and make today count. Remember, every great journey begins with a single step.</p>
+                    <p style="color: #555; line-height: 1.6;">{thought_content}</p>
                 </div>
                 
                 <div style="background: #fff3cd; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #ffc107;">
